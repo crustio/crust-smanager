@@ -5,7 +5,7 @@
   "main": "index.js",
   "repository": "https://github.com/crustio/crust-smanager.git",
   "author": "Zikun Fan <zikunvan@gmail.com>",
-  "license": "AGPL-3.0-only",
+  "license": "GPL-3.0",
   "scripts": {
     "debug": "nodemon src/index.ts",
     "start": "node build/src/index.js",
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@polkadot/api": "^2.2.1",
+    "ipfs-http-client": "^48.0.0",
     "lodash": "^4.17.20"
   },
   "devDependencies": {
