@@ -19,11 +19,13 @@
     "posttest": "yarn run lint"
   },
   "dependencies": {
-    "@polkadot/api": "^2.2.1",
+    "@polkadot/api": "^2.5.1",
+    "bignumber.js": "^9.0.1",
     "ipfs-http-client": "^48.0.0",
     "lodash": "^4.17.20"
   },
   "devDependencies": {
+    "@types/bignumber.js": "^5.0.0",
     "@types/lodash": "^4.14.164",
     "@types/node": "^14.14.6",
     "gts": "^3.0.2",
