@@ -3,6 +3,8 @@ import * as _ from 'lodash';
 export interface Task {
   // The ipfs cid value
   cid: string;
+  // Object size
+  size: number;
   // Current block number
   bn: number;
 }
