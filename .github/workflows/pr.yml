@@ -12,5 +12,5 @@ jobs:
     - uses: actions/checkout@v1
     - name: ${{ matrix.step }}
       run: |
-        yarn install --immutable
+        yarn
         yarn ${{ matrix.step }}
