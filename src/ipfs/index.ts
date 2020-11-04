@@ -4,43 +4,35 @@ const {CID} = require('ipfs-http-client');
 
 export default class Ipfs {
   private ipfs: any;
-  private readonly maxTimeout: string;
 
-  constructor(ipfsAddr: string, mto: string) {
-    this.ipfs = IpfsHttpClient(ipfsAddr);
-    this.maxTimeout = mto;
+  constructor(ipfsAddr: string, mto: number) {
+    this.ipfs = IpfsHttpClient({
+      address: ipfsAddr,
+      timeout: mto,
+    });
   }
 
   /// WRITE methods
   /**
    * Pin add file by a given cid asyncly
-   * @param cid ipfs cid value
+   * @param c ipfs cid value
+   * @throws illegal cid | timeout
    */
-  pin(cid: string): boolean {
-    try {
-      this.ipfs.pin.add(new CID(cid), {
-        timeout: this.maxTimeout,
-      });
-      return true;
-    } catch (e) {
-      return false;
-    }
+  async pin(c: string): Promise<boolean> {
+    const cid = new CID(c);
+    const pin = await this.ipfs.pin.add(new CID(cid));
+    return cid.equals(pin);
   }
 
   /**
    * Pin remove file by a given cid
    * @param c ipfs cid value
+   * @throws illegal cid | unpinned `c` | timeout
    */
   async unpin(c: string): Promise<boolean> {
-    try {
-      const cid = new CID(c);
-      const pin = await this.ipfs.pin.rm(cid, {
-        timeout: this.maxTimeout,
-      });
-      return cid.equals(pin);
-    } catch (e) {
-      return false; // `cid` not pinned before
-    }
+    const cid = new CID(c);
+    const pin = await this.ipfs.pin.rm(cid);
+    return cid.equals(pin);
   }
 
   /// READONLY methods
@@ -48,49 +40,35 @@ export default class Ipfs {
    * Get file size by a given cid
    * @param cid ipfs cid value
    * @returns file size (bytes)
+   * @throws illegal cid | timeout
    */
   async size(cid: string): Promise<number> {
-    try {
-      const objInfo = await this.ipfs.object.stat(new CID(cid), {
-        timeout: this.maxTimeout,
-      });
-      return objInfo.CumulativeSize;
-    } catch (e) {
-      return -1; // illegal cid, not found or api http error
-    }
+    const objInfo = await this.ipfs.object.stat(new CID(cid));
+    return objInfo.CumulativeSize;
   }
 
   /**
    * Query if a given cid(recursive type) exist
    * @param c ipfs cid value
+   * @throws illegal cid | timeout
    */
   async exist(c: string): Promise<boolean> {
-    try {
-      const cid = new CID(c);
-      for await (const pin of this.ipfs.pin.ls({
-        paths: cid,
-        type: 'recursive',
-        timeout: this.maxTimeout,
-      })) {
-        if (cid.equals(pin.cid)) return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
+    const cid = new CID(c);
+    for await (const pin of this.ipfs.pin.ls({
+      paths: cid,
+      type: 'recursive',
+    })) {
+      if (cid.equals(pin.cid)) return true;
     }
+    return false;
   }
 
   /**
    * @returns ipfs remaining storage
+   * @throws timeout
    */
   async free(): Promise<BigNumber> {
-    try {
-      const repoStat = await this.ipfs.repo.stat({
-        timeout: this.maxTimeout,
-      });
-      return repoStat.storageMax.minus(repoStat.repoSize);
-    } catch (e) {
-      return new BigNumber(-1); // api http error
-    }
+    const repoStat = await this.ipfs.repo.stat();
+    return repoStat.storageMax.minus(repoStat.repoSize);
   }
 }
