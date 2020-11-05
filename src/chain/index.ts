@@ -1,4 +1,5 @@
 import {ApiPromise, WsProvider} from '@polkadot/api';
+// eslint-disable-next-line node/no-extraneous-import
 import Block from '@polkadot/types/generic/Block';
 
 const types = {
