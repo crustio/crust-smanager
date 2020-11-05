@@ -1,25 +1,16 @@
 import * as _ from 'lodash';
 
-export interface Task {
-  // The ipfs cid value
-  cid: string;
-  // Object size
-  size: number;
-  // Current block number
-  bn: number;
-}
-
 /**
  * Queue interact with cache
  * Provides the management of pending tasks
  */
-export class TaskQueue {
-  private tasks: Task[];
+export class TaskQueue<T> {
+  private tasks: T[];
   private readonly maxLength: number;
   private readonly maxDuration: number;
 
   constructor(ml: number, md: number) {
-    this.tasks = new Array<Task>();
+    this.tasks = new Array<T>();
     this.maxLength = ml;
     this.maxDuration = md;
   }
@@ -28,7 +19,7 @@ export class TaskQueue {
    * Push an new task
    * @param nt: new task
    */
-  push(nt: Task): boolean {
+  push(nt: T): boolean {
     if (this.tasks.length >= this.maxLength) return false;
     this.tasks.push(nt);
     return true;
@@ -37,16 +28,16 @@ export class TaskQueue {
   /**
    * Pop the first task
    */
-  pop(): Task | undefined {
+  pop(): T | undefined {
     if (_.isEmpty(this.tasks)) return undefined;
     return this.tasks.shift();
   }
 
   /**
    * Clear the outdated tasks
-   * @param cbn: current block number
+   * @param f: filter handler
    */
-  clear(cbn: number) {
-    this.tasks = this.tasks.filter(t => cbn - t.bn <= this.maxDuration);
+  clear(f: (t: T) => boolean) {
+    this.tasks = this.tasks.filter(t => f(t));
   }
 }

@@ -6,6 +6,7 @@ export default class Ipfs {
   private ipfs: any;
 
   constructor(ipfsAddr: string, mto: number) {
+    // TODO: Check connection and ipfsAddr is legal
     this.ipfs = IpfsHttpClient({
       address: ipfsAddr,
       timeout: mto,
