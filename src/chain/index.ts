@@ -1,6 +1,6 @@
 import {ApiPromise, WsProvider} from '@polkadot/api';
 // eslint-disable-next-line node/no-extraneous-import
-import Block from '@polkadot/types/generic/Block';
+import {Header} from '@polkadot/types/interfaces';
 
 const types = {
   Address: 'AccountId',
@@ -113,9 +113,9 @@ export default class CrustApi {
    * @returns unsubscribe signal
    * @throws ApiPromise error
    */
-  async subscribeNewHeads(handler: (b: Block) => void) {
+  async subscribeNewHeads(handler: (b: Header) => void) {
     await this.withApiReady();
-    return await this.api.rpc.chain.subscribeNewHeads((head: Block) =>
+    return await this.api.rpc.chain.subscribeNewHeads((head: Header) =>
       handler(head)
     );
   }
