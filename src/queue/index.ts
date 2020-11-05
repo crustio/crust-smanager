@@ -28,8 +28,8 @@ export class TaskQueue<T> {
   /**
    * Pop the first task
    */
-  pop(): T | null {
-    if (_.isEmpty(this.tasks)) return null;
+  pop(): T | undefined {
+    if (_.isEmpty(this.tasks)) return undefined;
     return this.tasks.shift();
   }
 
