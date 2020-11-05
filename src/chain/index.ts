@@ -120,7 +120,13 @@ export default class CrustApi {
     );
   }
 
-  async getNewSorder(bn: number): Promise<StorageOrder | null> {
+  /**
+   * Trying to get new storage order by parsing block event
+   * @param bn block number
+   * @returns StorageOrder or null(no storage order in this block)
+   * @throws ApiPromise error or type conversing error
+   */
+  async maybeGetNewSorder(bn: number): Promise<StorageOrder | null> {
     await this.withApiReady();
     const bh = await this.api.rpc.chain.getBlockHash(bn);
     const events = await this.api.query.system.events.at(bh);
@@ -128,6 +134,8 @@ export default class CrustApi {
       event: {data, method},
     } of events) {
       if (method === 'StorageOrderSuccess') {
+        if (data.length < 2) return null; // data should be like [AccountId, StorageOrder]
+
         // Find new successful storage order
         return data[1].toHuman() as StorageOrder;
       }
@@ -136,6 +144,7 @@ export default class CrustApi {
     return null;
   }
 
+  // TODO: add more error handling here
   private async withApiReady(): Promise<void> {
     await this.api.isReadyOrError;
   }
