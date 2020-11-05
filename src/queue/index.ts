@@ -1,10 +1,15 @@
 import * as _ from 'lodash';
 
+export interface BT {
+  // Block number
+  bn: number;
+}
+
 /**
  * Queue interact with cache
  * Provides the management of pending tasks
  */
-export class TaskQueue<T> {
+export default class TaskQueue<T extends BT> {
   private tasks: T[];
   private readonly maxLength: number;
   private readonly maxDuration: number;
@@ -34,10 +39,10 @@ export class TaskQueue<T> {
   }
 
   /**
-   * Clear the outdated tasks
+   * Clear tasks by `f` condition
    * @param f: filter handler
    */
-  clear(f: (t: T) => boolean) {
-    this.tasks = this.tasks.filter(t => f(t));
+  clear(cbn: number) {
+    this.tasks = this.tasks.filter(t => cbn - t.bn <= this.maxDuration);
   }
 }
