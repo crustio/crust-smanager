@@ -2,7 +2,7 @@ import {BigNumber} from 'bignumber.js';
 const IpfsHttpClient = require('ipfs-http-client');
 const {CID} = require('ipfs-http-client');
 
-export default class Ipfs {
+export default class IpfsApi {
   private ipfs: any;
 
   constructor(ipfsAddr: string, mto: number) {
