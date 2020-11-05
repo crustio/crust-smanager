@@ -1,4 +1,5 @@
 import {ApiPromise, WsProvider} from '@polkadot/api';
+import Block from '@polkadot/types/generic/Block';
 
 const types = {
   Address: 'AccountId',
@@ -93,8 +94,10 @@ const types = {
   },
 };
 
-export class CrustApi {
-  private api: ApiPromise;
+export type StorageOrder = typeof types.StorageOrder;
+
+export default class CrustApi {
+  private readonly api: ApiPromise;
 
   constructor(addr: string) {
     this.api = new ApiPromise({
@@ -103,5 +106,36 @@ export class CrustApi {
     });
   }
 
-  // TODO: add DSM related interfaces
+  /**
+   * Register a pubsub event, dealing with new block
+   * @param handler handling with new block
+   * @returns unsubscribe signal
+   * @throws ApiPromise error
+   */
+  async subscribeNewHeads(handler: (b: Block) => void) {
+    await this.withApiReady();
+    return await this.api.rpc.chain.subscribeNewHeads((head: Block) =>
+      handler(head)
+    );
+  }
+
+  async getNewSorder(bn: number): Promise<StorageOrder | null> {
+    await this.withApiReady();
+    const bh = await this.api.rpc.chain.getBlockHash(bn);
+    const events = await this.api.query.system.events.at(bh);
+    for (const {
+      event: {data, method},
+    } of events) {
+      if (method === 'StorageOrderSuccess') {
+        // Find new successful storage order
+        return data[1].toHuman() as StorageOrder;
+      }
+    }
+
+    return null;
+  }
+
+  private async withApiReady(): Promise<void> {
+    await this.api.isReadyOrError;
+  }
 }
