@@ -10,7 +10,7 @@ export interface BT {
  * Provides the management of pending tasks
  */
 export default class TaskQueue<T extends BT> {
-  private tasks: T[];
+  private _tasks: T[];
   private readonly maxLength: number;
   private readonly maxDuration: number;
 
@@ -18,6 +18,14 @@ export default class TaskQueue<T extends BT> {
     this.tasks = new Array<T>();
     this.maxLength = ml;
     this.maxDuration = md;
+  }
+
+  set tasks(ts: T[]) {
+    this._tasks = ts;
+  }
+
+  get tasks(): T[] {
+    return this._tasks;
   }
 
   /**

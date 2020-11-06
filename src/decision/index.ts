@@ -1,8 +1,10 @@
+// eslint-disable-next-line node/no-extraneous-import
+import {Header} from '@polkadot/types/interfaces';
+import * as _ from 'lodash';
 import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {StorageOrder} from '../chain';
-// eslint-disable-next-line node/no-extraneous-import
-import {Header} from '@polkadot/types/interfaces';
+import * as cron from 'node-cron';
 
 export interface Task extends BT {
   // The ipfs cid value
@@ -40,12 +42,11 @@ export class DecisionEngine {
         const nt: Task = {
           cid: newSorder.file_identifier,
           bn: bn,
-          size: parseInt(newSorder.file_size),
+          size: _.parseInt(newSorder.file_size, 10),
         };
 
-        if (this.pickOrDropPending(nt.cid, nt.size)) {
-          this.pendingQueue.push(nt);
-        }
+        // Always push into pending queue
+        this.pendingQueue.push(nt);
       }
     };
 
@@ -54,16 +55,41 @@ export class DecisionEngine {
     return unsubscribe;
   }
 
-  async subscribePullings() {
-    // 1. Take pending tasks
-    // 2. Judge if join pullings
+  async subscribePullings(): Promise<cron.ScheduledTask> {
+    return cron.schedule('* * * * *', async () => {
+      // 1. Loop and pop all pendings
+      const oldPts: Task[] = this.pendingQueue.tasks;
+      const newPts = new Array<Task>();
+      for (const pt of oldPts) {
+        // 2. If join pullings and start puling in ipfs, otherwise push back to pending tasks
+        if (await this.pickOrDropPending(pt.cid, pt.size)) {
+          this.pullingQueue.push(pt);
+        } else {
+          newPts.push(pt);
+        }
+      }
+      // 3. Set back to pending queue
+      this.pendingQueue.tasks = newPts;
+    });
   }
 
-  async subscribeSealings() {
-    // 1. Loop pulling tasks
-    // 2. Look through ipfs contains
-    // 3. Send sWorker to seal
-    // 4. Delete completed pulling tasks
+  async subscribeSealings(): Promise<cron.ScheduledTask> {
+    return cron.schedule('* * * * *', async () => {
+      // 1. Loop pulling tasks
+      const oldPts: Task[] = this.pullingQueue.tasks;
+      const newPts = new Array<Task>();
+      for (const pt of oldPts) {
+        // 2. Judge if pulling successful, otherwise push back to pulling tasks
+        if (await this.pickOrDropPulling(pt.cid, pt.size)) {
+          // TODO: Call `sWorker.seal(pt.cid)` here
+          console.log('Send to sWorker to seal');
+        } else {
+          newPts.push(pt);
+        }
+      }
+      // 3. Set back to pulling queue
+      this.pullingQueue.tasks = newPts;
+    });
   }
 
   /// CUSTOMIZE STRATEGY
