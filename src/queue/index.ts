@@ -15,7 +15,7 @@ export default class TaskQueue<T extends BT> {
   private readonly maxDuration: number;
 
   constructor(ml: number, md: number) {
-    this.tasks = new Array<T>();
+    this._tasks = new Array<T>();
     this.maxLength = ml;
     this.maxDuration = md;
   }
