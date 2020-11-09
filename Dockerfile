@@ -1,7 +1,7 @@
 FROM node:current-alpine3.10
 
-# Create crust-api directory
-WORKDIR /usr/src/crust-api
+# Create crust-smanager directory
+WORKDIR /usr/src/crust-smanager
 
 # Move source files to docker image
 COPY . .
