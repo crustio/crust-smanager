@@ -6,6 +6,7 @@ import {Header} from '@polkadot/types/interfaces';
 import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {StorageOrder} from '../chain';
+import {logger} from '../log';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -39,7 +40,7 @@ export default class DecisionEngine {
     const addPendings = async (b: Header) => {
       // 1. Get block number
       const bn = b.number.toNumber();
-      console.log(`Got new block ${bn}`);
+      logger.info(`⛓  Got new block ${bn} from chain`);
 
       // 2. Try to get new storage order
       const newSorder: StorageOrder | null = await this.crustApi.maybeGetNewSorder(
@@ -50,8 +51,13 @@ export default class DecisionEngine {
         const nt: Task = {
           cid: newSorder.file_identifier,
           bn: bn,
-          size: _.parseInt(newSorder.file_size, 10),
+          size: _.parseInt(newSorder.file_size.replace(/,/g, '')),
         };
+        logger.info(
+          `  ↪ 🎁  Found new storage order, adding to pending queue ${JSON.stringify(
+            nt
+          )}`
+        );
         // Always push into pending queue
         this.pendingQueue.push(nt);
       }
@@ -75,18 +81,22 @@ export default class DecisionEngine {
       // 1. Loop and pop all pendings
       const oldPts: Task[] = this.pendingQueue.tasks;
       const newPts = new Array<Task>();
-      console.log('Checking pendings...');
+      logger.info('⏳  Checking pending queue...');
 
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs, otherwise push back to pending tasks
         if (await this.pickOrDropPending(pt.cid, pt.size)) {
+          logger.info(
+            `  ↪ 🎁  Pick pending task ${JSON.stringify(pt)}, pulling from ipfs`
+          );
           // Async pulling
           this.ipfsApi.pin(pt.cid).then(pinRst => {
             if (!pinRst) {
               // TODO: Maybe push back to pending queue?
-              console.log(`Pin ${pt.cid} failed`);
+              logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
             } else {
               // Pin successfully
+              logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
             }
           });
           this.pullingQueue.push(pt);
@@ -109,13 +119,13 @@ export default class DecisionEngine {
       // 1. Loop pulling tasks
       const oldPts: Task[] = this.pullingQueue.tasks;
       const newPts = new Array<Task>();
-      console.log('Checking pullings...');
+      logger.info('⏳  Checking pulling queue...');
 
       for (const pt of oldPts) {
         // 2. Judge if pulling successful, otherwise push back to pulling tasks
         if (await this.pickOrDropPulling(pt.cid, pt.size)) {
           // TODO: Call `sWorker.seal(pt.cid)` here
-          console.log('Send to sWorker to seal');
+          logger.info(`  ↪ ⚙️  Send sWorker to seal: ${JSON.stringify(pt)}`);
         } else {
           newPts.push(pt);
         }
@@ -142,12 +152,19 @@ export default class DecisionEngine {
   ): Promise<boolean> {
     // 1. Get and judge file size is match
     const size = await this.ipfsApi.size(cid);
-    if (size !== f_size) return false;
+    logger.info(`  ↪ 📂  Got ipfs file ${cid} size: ${size}`);
+    if (size !== f_size) {
+      logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${f_size}`);
+      return false;
+    }
 
     // 2. Get and judge repo can take it, make sure the free can take double file
     const free = await this.ipfsApi.free();
     const bn_f_size = new BigNumber(f_size);
-    if (free <= bn_f_size.multipliedBy(2)) return false;
+    if (free <= bn_f_size.multipliedBy(2)) {
+      logger.warn(`  ↪ ⚠️  Free space not enought ${free} < ${size}*2`);
+      return false;
+    }
 
     // TODO: Add probabilistic take sorder strategy here
     return true;
