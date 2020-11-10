@@ -1,8 +1,7 @@
-// TODO: Basic flow - func main with producer and consumer(2 queues, PendingQueue and PullingQueue)
-// TODO: Better logging
 // TODO: Add README
 import {argv} from 'process';
 import DecisionEngine from './decision';
+import {logger} from './log';
 
 const chainAddr = argv[2] || 'ws://localhost:9944';
 const ipfsAddr = argv[3] || 'http://localhost:5001';
@@ -12,9 +11,15 @@ try {
   const de = new DecisionEngine(chainAddr, ipfsAddr, maxIpfsTimeout);
 
   // TODO: Get cancellation signal and handle errors?
-  de.subscribePendings();
-  de.subscribePullings();
-  de.subscribeSealings();
+  de.subscribePendings().catch(e =>
+    logger.error(`💥  Caught pending queue error: ${e.toString()}`)
+  );
+  de.subscribePullings().catch(e =>
+    logger.error(`💥  Caught pulling queue error: ${e.toString()}`)
+  );
+  de.subscribeSealings().catch(e =>
+    logger.error(`💥  Caught sealing queue error: ${e.toString()}`)
+  );
 } catch (e) {
-  console.error(e.toString());
+  logger.error(`💥  Caught unhandled error ${e.toString()}`);
 }

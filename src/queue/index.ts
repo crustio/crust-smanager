@@ -1,4 +1,5 @@
 import * as _ from 'lodash';
+import {logger} from '../log';
 
 export interface BT {
   // Block number
@@ -51,6 +52,12 @@ export default class TaskQueue<T extends BT> {
    * @param f: filter handler
    */
   clear(cbn: number) {
-    this.tasks = this.tasks.filter(t => cbn - t.bn <= this.maxDuration);
+    this.tasks = this.tasks.filter(t => {
+      if (cbn - t.bn > this.maxDuration) {
+        logger.info(`🗑  Clear outdated task: ${JSON.stringify(t)}`);
+        return false;
+      }
+      return true;
+    });
   }
 }
