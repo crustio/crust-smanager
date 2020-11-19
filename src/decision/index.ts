@@ -203,8 +203,8 @@ export default class DecisionEngine {
     // 1. Generate a number between 0 and 1
     const randNum = Math.random();
     // 2. Calculate probability
-    const multiple = (this.currentBn - bn) / 10 + 1; // 10 unit means 1min
-    const probability = initialProbability * multiple; // probability will turns into 100% after 200 * 10 unit = 2000min
+    const multiple = (this.currentBn - bn) / 1 + 1; // 1 unit means 1min
+    const probability = initialProbability * multiple; // probability will turns into 100% after 200 * 1 unit = 200min
     logger.info(
       `💓  Current randNum is ${randNum}, New target is ${probability}, ${this.currentBn}, ${bn}, ${multiple}`
     );
