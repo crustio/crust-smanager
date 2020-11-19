@@ -144,6 +144,10 @@ export default class CrustApi {
     return null;
   }
 
+  // async maybeGetFile(cid: string): Promise<File | null> {
+  //   // TODO: query `Files`
+  // }
+
   // TODO: add more error handling here
   private async withApiReady(): Promise<void> {
     await this.api.isReadyOrError;
