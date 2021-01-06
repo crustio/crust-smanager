@@ -174,7 +174,7 @@ export default class DecisionEngine {
       logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
       if (size !== t.size) {
         logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-        return true;
+        return false;
       }
 
       // 2. Get and judge repo can take it, make sure the free can take double file
