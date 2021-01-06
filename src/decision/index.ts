@@ -46,7 +46,7 @@ export default class DecisionEngine {
    * @throws crustApi error
    */
   async subscribePendings() {
-    const addPendings = async (b: Header) => {
+    const addPullings = async (b: Header) => {
       // 1. Get block number
       const bn = b.number.toNumber();
       const bh = b.hash.toString();
@@ -57,7 +57,7 @@ export default class DecisionEngine {
       const newFile: FileInfo | null = await this.crustApi.parseNewFileByBlock(
         bh
       );
-      // 4. If got new storage order, put it into pendingQueue
+      // 4. If got new storage order, put it into pullingQueue
       if (newFile) {
         const nt: Task = {
           cid: hexToString(newFile.cid),
@@ -65,11 +65,11 @@ export default class DecisionEngine {
           size: newFile.size,
         };
         logger.info(
-          `  ↪ 🎁  Found new file, adding it to pending queue ${JSON.stringify(
+          `  ↪ 🎁  Found new file, adding it to pulling queue ${JSON.stringify(
             nt
           )}`
         );
-        // Always push into pending queue
+        // Always push into pulling queue
         this.pullingQueue.push(nt);
       }
       // 5. Check and clean outdated tasks
@@ -77,7 +77,7 @@ export default class DecisionEngine {
       this.sealingQueue.clear(bn);
     };
 
-    const unsubscribe = await this.crustApi.subscribeNewHeads(addPendings);
+    const unsubscribe = await this.crustApi.subscribeNewHeads(addPullings);
 
     return unsubscribe;
   }
@@ -89,14 +89,14 @@ export default class DecisionEngine {
    */
   async subscribePullings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
-      // 1. Loop and pop all pending tasks
+      // 1. Loop and pop all pulling tasks
       const oldPts: Task[] = this.pullingQueue.tasks;
       const newPts = new Array<Task>();
       logger.info('⏳  Checking pulling queue ...');
       logger.info(`  ↪ 🏃🏼‍♂️  Pulling queue length: ${oldPts.length}`);
 
       for (const pt of oldPts) {
-        // 2. If join pullings and start puling in ipfs, otherwise push back to pending tasks
+        // 2. If join pullings and start puling in ipfs, otherwise push back to pulling tasks
         if (await this.pickOrDropPulling(pt)) {
           logger.info(
             `  ↪ 🎁  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
@@ -136,14 +136,14 @@ export default class DecisionEngine {
    */
   async subscribeSealings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
-      // 1. Loop pulling tasks
+      // 1. Loop sealing tasks
       const oldPts: Task[] = this.sealingQueue.tasks;
       const newPts = new Array<Task>();
       logger.info('⏳  Checking sealing queue...');
-      logger.info(`  ↪ 🏃🏼‍♂️  Sealing queue length: ${oldPts.length}`);
+      logger.info(`  ↪ 🕺🏼  Sealing queue length: ${oldPts.length}`);
 
       for (const pt of oldPts) {
-        // 2. Judge if pulling successful, otherwise push back to pulling tasks
+        // 2. Judge if sealing successful, otherwise push back to sealing tasks
         if (await this.pickOrDropSealing(pt.cid, pt.size)) {
           // TODO: Call `sWorker.seal(pt.cid)` here
           logger.info(`  ↪ ⚙️  Send sWorker to seal: ${JSON.stringify(pt)}`);
@@ -151,7 +151,7 @@ export default class DecisionEngine {
           newPts.push(pt);
         }
       }
-      // 3. Set back to pulling queue
+      // 3. Set back to sealing queue
       this.sealingQueue.tasks = newPts;
     });
   }
