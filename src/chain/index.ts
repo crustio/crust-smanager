@@ -1,3 +1,4 @@
+/* eslint-disable node/no-extraneous-import */
 import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {parseObj} from '../util';
