@@ -164,7 +164,7 @@ export default class DecisionEngine {
       // 1. Loop sealing tasks
       for (const st of oldSts) {
         // 2. Judge if sealing successful, otherwise push back to sealing tasks
-        if (await this.pickUpSealing(st.cid, st.size)) {
+        if (await this.pickUpSealing(st)) {
           logger.info(
             `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
           );
