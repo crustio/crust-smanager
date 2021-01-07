@@ -14,3 +14,14 @@ export function parseObj(o: any) {
 export function hexToString(hex: string): string {
   return Buffer.from(hex.substring(2), 'hex').toString();
 }
+
+/**
+ * GB to B
+ * number's max value: 9007199254740991
+ * so basically we don't need BigNumber at all
+ * @param gb GB size
+ * @returns B size
+ */
+export function gigaBytesToBytes(gb: number): number {
+  return gb * 1073741824;
+}

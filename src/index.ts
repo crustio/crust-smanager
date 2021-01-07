@@ -5,10 +5,18 @@ import {logger} from './log';
 
 const chainAddr = argv[2] || 'ws://localhost:9944';
 const ipfsAddr = argv[3] || 'http://localhost:5001';
-const maxIpfsTimeout = 20000; // 20s
+const sworkerAddr = argv[4] || 'http://localhost:12222';
+const ipfsTimeout = 20000; // 20s
+const sworkerTimeout = 20000; //20s
 
 try {
-  const de = new DecisionEngine(chainAddr, ipfsAddr, maxIpfsTimeout);
+  const de = new DecisionEngine(
+    chainAddr,
+    ipfsAddr,
+    sworkerAddr,
+    ipfsTimeout,
+    sworkerTimeout
+  );
 
   // TODO: Get cancellation signal and handle errors?
   de.subscribeNewFiles().catch(e =>

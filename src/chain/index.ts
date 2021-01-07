@@ -88,6 +88,7 @@ export default class CrustApi {
     });
   }
 
+  /// READ methods
   /**
    * Register a pubsub event, dealing with new block
    * @param handler handling with new block
