@@ -1,6 +1,7 @@
 /* eslint-disable node/no-extraneous-import */
 import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
+import {logger} from '../log';
 import {parseObj} from '../util';
 
 const types = {
@@ -102,34 +103,40 @@ export default class CrustApi {
   }
 
   /**
-   * Trying to get new file order by parsing block event
+   * Trying to get new file orders by parsing block event
    * @param bh block hash
-   * @returns Option<FileInfo>(no file order in this block)
+   * @returns Vec<FileInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async parseNewFileByBlock(bh: string): Promise<FileInfo | null> {
+  async parseNewFilesByBlock(bh: string): Promise<FileInfo[]> {
     await this.withApiReady();
     const block = await this.api.rpc.chain.getBlock(bh);
     const exs: Extrinsic[] = block.block.extrinsics;
     const ers: EventRecord[] = await this.api.query.system.events.at(bh);
+    const files: FileInfo[] = [];
+
     for (const {
       event: {data, method},
       phase,
     } of ers) {
       if (method === 'FileSuccess') {
-        if (data.length < 2) return null; // data should be like [AccountId, FileInfo]
+        if (data.length < 2) continue; // data should be like [AccountId, FileInfo]
 
         // Find new successful file order from extrinsincs
         // a. Get reportWorks extrinsics
         const exIdx = phase.asApplyExtrinsic.toNumber();
         const ex = exs[exIdx];
 
-        // b. Parse new file
-        return this.parseFileInfo(ex);
+        // b. Parse new file, continue with parsing error
+        try {
+          files.push(this.parseFileInfo(ex));
+        } catch (err) {
+          logger.error(`  ↪ 💥 Parse file error at block(${bh})`);
+        }
       }
     }
 
-    return null;
+    return files;
   }
 
   /**

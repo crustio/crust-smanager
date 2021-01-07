@@ -40,25 +40,33 @@ export default class DecisionEngine {
   }
 
   /**
-   * Subscribe new file order extrinsic, scheduling by `subscribeNewHeads`
+   * Subscribe new files, scheduling by `subscribeNewHeads`, put it into pulling queue
    * It will also check the outdated tasks
    * @returns stop `taking new storage order`
    * @throws crustApi error
    */
-  async subscribePendings() {
+  async subscribeNewFiles() {
     const addPullings = async (b: Header) => {
       // 1. Get block number
       const bn = b.number.toNumber();
       const bh = b.hash.toString();
+
+      // 2. Judge if already got the same block
+      if (bn === this.currentBn) {
+        logger.warn('⚠️  Found duplicated block');
+        return;
+      }
+
       logger.info(`⛓  Got new block ${bn}(${bh})`);
-      // 2. Update current block number
+
+      // 3. Update current block number
       this.currentBn = bn;
-      // 3. Try to get new storage order
-      const newFile: FileInfo | null = await this.crustApi.parseNewFileByBlock(
-        bh
-      );
-      // 4. If got new storage order, put it into pullingQueue
-      if (newFile) {
+
+      // 4. Try to get new files
+      const newFiles: FileInfo[] = await this.crustApi.parseNewFilesByBlock(bh);
+
+      // 5. If got new files, parse and push into pulling queue
+      for (const newFile of newFiles) {
         const nt: Task = {
           cid: hexToString(newFile.cid),
           bn: bn,
@@ -72,7 +80,8 @@ export default class DecisionEngine {
         // Always push into pulling queue
         this.pullingQueue.push(nt);
       }
-      // 5. Check and clean outdated tasks
+
+      // 6. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
       this.sealingQueue.clear(bn);
     };
@@ -84,6 +93,7 @@ export default class DecisionEngine {
 
   /**
    * Subscribe new ipfs pin add task, scheduling by cron.ScheduledTask
+   * Take pulling task from pull queue, (maybe) adding into sealing queue
    * @returns stop `ipfs pinning add`
    * @throws ipfsApi error
    */
@@ -93,7 +103,7 @@ export default class DecisionEngine {
       const oldPts: Task[] = this.pullingQueue.tasks;
       const newPts = new Array<Task>();
       logger.info('⏳  Checking pulling queue ...');
-      logger.info(`  ↪ 🏃🏼‍♂️  Pulling queue length: ${oldPts.length}`);
+      logger.info(`  ↪ 📨  Pulling queue length: ${oldPts.length}`);
 
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs, otherwise push back to pulling tasks
@@ -131,27 +141,29 @@ export default class DecisionEngine {
 
   /**
    * Subscribe new sWorker seal task, scheduling by cron.ScheduledTask
+   * Take sealing task from sealing queue, notify sWorker do the sealing job
    * @returns stop `sWorker sealing`
    * @throws sWorkerApi error
    */
   async subscribeSealings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
-      // 1. Loop sealing tasks
       const oldPts: Task[] = this.sealingQueue.tasks;
       const newPts = new Array<Task>();
       logger.info('⏳  Checking sealing queue...');
-      logger.info(`  ↪ 🕺🏼  Sealing queue length: ${oldPts.length}`);
+      logger.info(`  ↪ 💌  Sealing queue length: ${oldPts.length}`);
 
+      // 1. Loop sealing tasks
       for (const pt of oldPts) {
         // 2. Judge if sealing successful, otherwise push back to sealing tasks
         if (await this.pickOrDropSealing(pt.cid, pt.size)) {
           // TODO: Call `sWorker.seal(pt.cid)` here
-          logger.info(`  ↪ ⚙️  Send sWorker to seal: ${JSON.stringify(pt)}`);
+          logger.info(`  ↪ ⚙️  Send to sWorker: ${JSON.stringify(pt)}`);
         } else {
           newPts.push(pt);
         }
       }
-      // 3. Set back to sealing queue
+
+      // 3. Push back to sealing queue
       this.sealingQueue.tasks = newPts;
     });
   }
@@ -174,7 +186,7 @@ export default class DecisionEngine {
       logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
       if (size !== t.size) {
         logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-        return false;
+        return true;
       }
 
       // 2. Get and judge repo can take it, make sure the free can take double file
@@ -187,7 +199,7 @@ export default class DecisionEngine {
       }
 
       // 3. Judge if it already been taked on chain or shoot it by chance
-      return this.isPulled(t.cid, t.bn);
+      return this.shouldPull(t.cid, t.bn);
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs error, detail with ${err}`);
       return false;
@@ -214,19 +226,22 @@ export default class DecisionEngine {
    * @param bn task block number
    * @throws crustApi error
    */
-  private async isPulled(cid: string, bn: number): Promise<boolean> {
+  private async shouldPull(cid: string, bn: number): Promise<boolean> {
     // TODO: Set flag to let user choose enable the `only take order file`
     const fileInfo: DetailFileInfo | null = await this.crustApi.maybeGetNewFile(
       cid
     );
+
     // If replicas already reach the limit
     if (
       fileInfo &&
-      fileInfo?.replicas.length > Number(fileInfo.expected_replica_count)
+      fileInfo.replicas.length > Number(fileInfo.expected_replica_count)
     ) {
+      logger.warn(
+        `  ↪ ⚠️  File replica already full with ${fileInfo.replicas.length}`
+      );
       return false;
     }
-
     // else, calculate the probability with `expired_date`
 
     // 1. Generate a number between 0 and 1
