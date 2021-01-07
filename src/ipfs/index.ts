@@ -3,7 +3,7 @@ const IpfsHttpClient = require('ipfs-http-client');
 const {CID} = require('ipfs-http-client');
 
 export default class IpfsApi {
-  private ipfs: any;
+  private readonly ipfs: any;
 
   constructor(ipfsAddr: string, mto: number) {
     // TODO: Check connection and ipfsAddr is legal
