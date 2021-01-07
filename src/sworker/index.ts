@@ -1,5 +1,5 @@
 import axios, {AxiosInstance} from 'axios';
-import { parseObj } from '../util';
+import {parseObj} from '../util';
 
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
