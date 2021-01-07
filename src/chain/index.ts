@@ -1,11 +1,23 @@
+/* eslint-disable node/no-extraneous-import */
 import {ApiPromise, WsProvider} from '@polkadot/api';
-// eslint-disable-next-line node/no-extraneous-import
-import {Header} from '@polkadot/types/interfaces';
+import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
+import {logger} from '../log';
+import {parseObj} from '../util';
 
 const types = {
   Address: 'AccountId',
   AddressInfo: 'Vec<u8>',
+  ETHAddress: 'Vec<u8>',
   FileAlias: 'Vec<u8>',
+  FileInfo: {
+    file_size: 'u64',
+    expired_on: 'BlockNumber',
+    claimed_at: 'BlockNumber',
+    amount: 'Balance',
+    expected_replica_count: 'u32',
+    reported_replica_count: 'u32',
+    replicas: 'Vec<Replica<AccountId>>',
+  },
   Guarantee: {
     targets: 'Vec<IndividualExposure<AccountId, Balance>>',
     total: 'Compact<Balance>',
@@ -14,88 +26,57 @@ const types = {
   },
   IASSig: 'Vec<u8>',
   Identity: {
-    pub_key: 'Vec<u8>',
-    code: 'Vec<u8>',
+    anchor: 'SworkerAnchor',
+    group: 'Option<AccountId>',
   },
   ISVBody: 'Vec<u8>',
   LookupSource: 'AccountId',
-  MerchantInfo: {
-    address: 'Vec<u8>',
-    storage_price: 'Balance',
-    file_map: 'Vec<(Vec<u8>, Vec<Hash>)>',
-  },
-  MerchantPunishment: {
-    success: 'EraIndex',
-    failed: 'EraIndex',
-    value: 'Balance',
+  MerchantLedger: {
+    reward: 'Balance',
+    pledge: 'Balance',
   },
   MerkleRoot: 'Vec<u8>',
-  OrderStatus: {
-    _enum: ['Success', 'Failed', 'Pending'],
-  },
-  PaymentLedger: {
-    total: 'Balance',
-    paid: 'Balance',
-    unreserved: 'Balance',
-  },
-  Pledge: {
-    total: 'Balance',
-    used: 'Balance',
-  },
   ReportSlot: 'u64',
+  Replica: {
+    who: 'AccountId',
+    valid_at: 'BlockNumber',
+    anchor: 'SworkerAnchor',
+  },
   Releases: {
     _enum: ['V1_0_0', 'V2_0_0'],
   },
-  SorderInfo: {
-    file_identifier: 'MerkleRoot',
-    file_size: 'u64',
-    created_on: 'BlockNumber',
-    merchant: 'AccountId',
-    client: 'AccountId',
-    amount: 'Balance',
-    duration: 'BlockNumber',
-  },
-  SorderStatus: {
-    completed_on: 'BlockNumber',
-    expired_on: 'BlockNumber',
-    status: 'OrderStatus',
-    claimed_at: 'BlockNumber',
-  },
-  SorderPunishment: {
-    success: 'BlockNumber',
-    failed: 'BlockNumber',
-    updated_at: 'BlockNumber',
+  PKInfo: {
+    code: 'SworkerCode',
+    anchor: 'Option<SworkerAnchor>',
   },
   Status: {
     _enum: ['Free', 'Reserved'],
   },
-  StorageOrder: {
-    file_identifier: 'Vec<u8>',
-    file_size: 'u64',
-    created_on: 'BlockNumber',
-    completed_on: 'BlockNumber',
-    expired_on: 'BlockNumber',
-    provider: 'AccountId',
-    client: 'AccountId',
-    amount: 'Balance',
-    order_status: 'OrderStatus',
-  },
+  SworkerAnchor: 'Vec<u8>',
   SworkerCert: 'Vec<u8>',
   SworkerCode: 'Vec<u8>',
   SworkerPubKey: 'Vec<u8>',
   SworkerSignature: 'Vec<u8>',
+  UsedInfo: {
+    used_size: 'u64',
+    groups: 'BTreeSet<SworkerAnchor>',
+  },
   WorkReport: {
     report_slot: 'u64',
     used: 'u64',
     free: 'u64',
-    files: 'BTreeMap<MerkleRoot, u64>',
     reported_files_size: 'u64',
     reported_srd_root: 'MerkleRoot',
     reported_files_root: 'MerkleRoot',
   },
 };
 
-export type StorageOrder = typeof types.StorageOrder;
+export interface FileInfo {
+  cid: string;
+  size: number;
+}
+
+export type DetailFileInfo = typeof types.FileInfo;
 
 export default class CrustApi {
   private readonly api: ApiPromise;
@@ -113,43 +94,73 @@ export default class CrustApi {
    * @returns unsubscribe signal
    * @throws ApiPromise error
    */
+  // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
     await this.withApiReady();
-    return await this.api.rpc.chain.subscribeNewHeads((head: Header) =>
+    return await this.api.rpc.chain.subscribeFinalizedHeads((head: Header) =>
       handler(head)
     );
   }
 
   /**
-   * Trying to get new storage order by parsing block event
-   * @param bn block number
-   * @returns StorageOrder or null(no storage order in this block)
+   * Trying to get new file orders by parsing block event
+   * @param bh block hash
+   * @returns Vec<FileInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetNewSorder(bn: number): Promise<StorageOrder | null> {
+  async parseNewFilesByBlock(bh: string): Promise<FileInfo[]> {
     await this.withApiReady();
-    const bh = await this.api.rpc.chain.getBlockHash(bn);
-    const events = await this.api.query.system.events.at(bh);
+    const block = await this.api.rpc.chain.getBlock(bh);
+    const exs: Extrinsic[] = block.block.extrinsics;
+    const ers: EventRecord[] = await this.api.query.system.events.at(bh);
+    const files: FileInfo[] = [];
+
     for (const {
       event: {data, method},
-    } of events) {
-      if (method === 'StorageOrderSuccess') {
-        if (data.length < 2) return null; // data should be like [AccountId, StorageOrder]
+      phase,
+    } of ers) {
+      if (method === 'FileSuccess') {
+        if (data.length < 2) continue; // data should be like [AccountId, FileInfo]
 
-        // Find new successful storage order
-        return data[1].toHuman() as StorageOrder;
+        // Find new successful file order from extrinsincs
+        // a. Get reportWorks extrinsics
+        const exIdx = phase.asApplyExtrinsic.toNumber();
+        const ex = exs[exIdx];
+
+        // b. Parse new file, continue with parsing error
+        try {
+          files.push(this.parseFileInfo(ex));
+        } catch (err) {
+          logger.error(`  ↪ 💥 Parse file error at block(${bh})`);
+        }
       }
     }
 
-    return null;
+    return files;
   }
 
-  // async maybeGetFile(cid: string): Promise<File | null> {
-  //   // TODO: query `Files`
-  // }
+  /**
+   * Get file info from chain by cid
+   * @param cid Ipfs file cid
+   * @returns Option<DetailFileInfo>
+   * @throws ApiPromise error or type conversing error
+   */
+  async maybeGetNewFile(cid: string): Promise<DetailFileInfo | null> {
+    await this.withApiReady();
+
+    return parseObj(await this.api.query.market.files(cid));
+  }
 
   // TODO: add more error handling here
   private async withApiReady(): Promise<void> {
     await this.api.isReadyOrError;
+  }
+
+  private parseFileInfo(ex: Extrinsic): FileInfo {
+    const exData = parseObj(ex.method).args;
+    return {
+      cid: exData.cid,
+      size: exData.file_size,
+    };
   }
 }

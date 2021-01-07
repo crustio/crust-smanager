@@ -11,7 +11,7 @@ try {
   const de = new DecisionEngine(chainAddr, ipfsAddr, maxIpfsTimeout);
 
   // TODO: Get cancellation signal and handle errors?
-  de.subscribePendings().catch(e =>
+  de.subscribeNewFiles().catch(e =>
     logger.error(`💥  Caught pending queue error: ${e.toString()}`)
   );
   de.subscribePullings().catch(e =>

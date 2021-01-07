@@ -12,8 +12,8 @@ export interface BT {
  */
 export default class TaskQueue<T extends BT> {
   private _tasks: T[];
-  private readonly maxLength: number;
-  private readonly maxDuration: number;
+  private readonly maxLength: number; // queue length
+  private readonly maxDuration: number; // task outdated time
 
   constructor(ml: number, md: number) {
     this._tasks = new Array<T>();
@@ -48,8 +48,8 @@ export default class TaskQueue<T extends BT> {
   }
 
   /**
-   * Clear tasks by `f` condition
-   * @param f: filter handler
+   * Clear queue
+   * @param cbn Current block number
    */
   clear(cbn: number) {
     this.tasks = this.tasks.filter(t => {
