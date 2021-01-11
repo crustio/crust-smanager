@@ -1,4 +1,5 @@
 import {BigNumber} from 'bignumber.js';
+import {addrToHostPort} from '../util';
 const IpfsHttpClient = require('ipfs-http-client');
 const {CID} = require('ipfs-http-client');
 
@@ -6,9 +7,12 @@ export default class IpfsApi {
   private readonly ipfs: any;
 
   constructor(ipfsAddr: string, mto: number) {
+    const [host, port] = addrToHostPort(ipfsAddr);
+
     // TODO: Check connection and ipfsAddr is legal
     this.ipfs = IpfsHttpClient({
-      address: ipfsAddr,
+      host: host,
+      port: port,
       timeout: mto,
     });
   }
