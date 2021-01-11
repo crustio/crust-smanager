@@ -149,7 +149,10 @@ export default class CrustApi {
   async maybeGetNewFile(cid: string): Promise<DetailFileInfo | null> {
     await this.withApiReady();
 
-    return parseObj(await this.api.query.market.files(cid));
+    const [fileInfo, _usedInfo] = parseObj(
+      await this.api.query.market.files(cid)
+    );
+    return fileInfo;
   }
 
   // TODO: add more error handling here
