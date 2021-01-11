@@ -1,3 +1,5 @@
+import {URL} from 'url';
+
 /**
  * Parse object into JSON object
  * @param o any object
@@ -24,4 +26,15 @@ export function hexToString(hex: string): string {
  */
 export function gigaBytesToBytes(gb: number): number {
   return gb * 1073741824;
+}
+
+/**
+ * Parse http address to host and port
+ * @param addr http address, format is `https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash`
+ * @returns [host, port]
+ */
+export function addrToHostPort(addr: string): [string, string] {
+  const url = new URL(addr);
+
+  return [url.hostname, url.port];
 }

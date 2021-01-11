@@ -1,6 +1,5 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
-import BigNumber from 'bignumber.js';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
 import TaskQueue, {BT} from '../queue';
