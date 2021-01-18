@@ -97,7 +97,15 @@ export default class CrustApi {
    */
   // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
+    // Waiting for API
     await this.withApiReady();
+
+    // Waiting for chain synchronization
+    while (this.isSyncing()) {
+      logger.info(`⛓  Chain is synchronizing, current block number ${(await this.crustApi.header()).number.toNumber()}`);
+    }
+    
+    // Subscribe finalized event
     return await this.api.rpc.chain.subscribeFinalizedHeads((head: Header) =>
       handler(head)
     );
