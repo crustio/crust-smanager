@@ -8,6 +8,7 @@ const types = {
   Address: 'AccountId',
   AddressInfo: 'Vec<u8>',
   ETHAddress: 'Vec<u8>',
+  EthereumTxHash: 'H256',
   FileAlias: 'Vec<u8>',
   FileInfo: {
     file_size: 'u64',
@@ -47,6 +48,7 @@ const types = {
   },
   PKInfo: {
     code: 'SworkerCode',
+    allow_report_slot: 'ReportSlot',
     anchor: 'Option<SworkerAnchor>',
   },
   Status: {
