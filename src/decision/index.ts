@@ -26,7 +26,7 @@ export default class DecisionEngine {
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
-  private crustApiError: boolean;
+  public crustApiError: boolean;
 
   constructor(
     chainAddr: string,
@@ -97,15 +97,10 @@ export default class DecisionEngine {
     };
 
     return cron.schedule('* * * * *', async () => {
-      try {
-        if(this.crustApiError)
-        {
-          this.crustApiError = false;
-          await this.crustApi.subscribeNewHeads(addPullings);
-        }
-      } catch (e) {
-        this.crustApiError = true;
-        throw e;
+      if(this.crustApiError)
+      {
+        this.crustApiError = false;
+        await this.crustApi.subscribeNewHeads(addPullings);
       }
     });
   }

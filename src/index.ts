@@ -1,7 +1,7 @@
 // TODO: Add README
-import {argv} from 'process';
+import { argv } from 'process';
 import DecisionEngine from './decision';
-import {logger} from './log';
+import { logger } from './log';
 
 const chainAddr = argv[2] || 'ws://localhost:9944';
 const ipfsAddr = argv[3] || 'http://localhost:5001';
@@ -19,8 +19,10 @@ try {
   );
 
   // TODO: Get cancellation signal and handle errors?
-  de.subscribeNewFiles().catch(e =>
+  de.subscribeNewFiles().catch(e => {
+    de.crustApiError = true;
     logger.error(`💥  Caught pending queue error: ${e.toString()}`)
+  }
   );
   de.subscribePullings().catch(e =>
     logger.error(`💥  Caught pulling queue error: ${e.toString()}`)
