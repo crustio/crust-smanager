@@ -1,12 +1,12 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT} from '../queue';
+import { Header } from '@polkadot/types/interfaces';
+import TaskQueue, { BT } from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, {DetailFileInfo, FileInfo} from '../chain';
-import {logger} from '../log';
-import {gigaBytesToBytes, hexToString} from '../util';
+import CrustApi, { DetailFileInfo, FileInfo } from '../chain';
+import { logger } from '../log';
+import { gigaBytesToBytes, hexToString } from '../util';
 import SworkerApi from '../sworker';
 
 // The initial probability is 5‰
@@ -26,6 +26,7 @@ export default class DecisionEngine {
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
+  private crustApiError: boolean;
 
   constructor(
     chainAddr: string,
@@ -41,6 +42,7 @@ export default class DecisionEngine {
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(50, 600);
     this.sealingQueue = new TaskQueue<Task>(30, 600);
+    this.crustApiError = false
 
     // Init the current block number
     // TODO: Do the restart mechanism
@@ -94,10 +96,18 @@ export default class DecisionEngine {
       this.sealingQueue.clear(bn);
     };
 
-    // Process new block
-    const unsubscribe = await this.crustApi.subscribeNewHeads(addPullings);
-
-    return unsubscribe;
+    return cron.schedule('* * * * *', async () => {
+      try {
+        if(this.crustApiError)
+        {
+          this.crustApiError = false;
+          await this.crustApi.subscribeNewHeads(addPullings);
+        }
+      } catch (e) {
+        this.crustApiError = true;
+        throw e;
+      }
+    });
   }
 
   /**

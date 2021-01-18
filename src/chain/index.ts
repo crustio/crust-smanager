@@ -3,6 +3,7 @@ import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {parseObj, sleep} from '../util';
+import * as cron from 'node-cron';
 
 const types = {
   Address: 'AccountId',
@@ -97,12 +98,10 @@ export default class CrustApi {
    */
   // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
-    // Waiting for API
-    await this.withApiReady();
-
     // Waiting for chain synchronization
-    while (this.isSyncing()) {
+    while (await this.isSyncing()) {
       logger.info(`⛓  Chain is synchronizing, current block number ${(await this.header()).number.toNumber()}`);
+      await sleep(6000);
     }
 
     // Subscribe finalized event
