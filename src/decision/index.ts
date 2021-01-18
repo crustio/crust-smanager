@@ -94,6 +94,12 @@ export default class DecisionEngine {
       this.sealingQueue.clear(bn);
     };
 
+    // Waiting for chain synchronization
+    while (this.crustApi.isSyncing()) {
+      logger.info(`⛓  Chain is synchronizing, current block number ${(await this.crustApi.header()).number.toNumber()}`);
+    }
+
+    // Process new block
     const unsubscribe = await this.crustApi.subscribeNewHeads(addPullings);
 
     return unsubscribe;

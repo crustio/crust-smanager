@@ -2,7 +2,7 @@
 import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
-import {parseObj} from '../util';
+import {parseObj, sleep} from '../util';
 
 const types = {
   Address: 'AccountId',
@@ -101,6 +101,34 @@ export default class CrustApi {
     return await this.api.rpc.chain.subscribeFinalizedHeads((head: Header) =>
       handler(head)
     );
+  }
+
+  /**
+   * Used to determine whether the chain is synchronizing
+   * @returns true/false
+   */
+  async isSyncing() {
+    const health = await this.api.rpc.system.health();
+    let res = health.isSyncing.isTrue
+    
+    if (!res) {
+      const h_before = await this.header();
+      await sleep(3000);
+      const h_after = await this.header();
+      if (h_before.number.toNumber() + 1 < h_after.number.toNumber()) {
+        res = true;
+      }
+    }
+  
+    return res;
+  }
+
+  /**
+   * Get best block's header
+   * @returns header
+   */
+  async header() {
+    return this.api.rpc.chain.getHeader();;
   }
 
   /**
