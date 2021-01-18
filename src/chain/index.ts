@@ -102,9 +102,9 @@ export default class CrustApi {
 
     // Waiting for chain synchronization
     while (this.isSyncing()) {
-      logger.info(`⛓  Chain is synchronizing, current block number ${(await this.crustApi.header()).number.toNumber()}`);
+      logger.info(`⛓  Chain is synchronizing, current block number ${(await this.header()).number.toNumber()}`);
     }
-    
+
     // Subscribe finalized event
     return await this.api.rpc.chain.subscribeFinalizedHeads((head: Header) =>
       handler(head)
