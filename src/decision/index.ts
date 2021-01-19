@@ -1,12 +1,12 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import { Header } from '@polkadot/types/interfaces';
-import TaskQueue, { BT } from '../queue';
+import {Header} from '@polkadot/types/interfaces';
+import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, { DetailFileInfo, FileInfo } from '../chain';
-import { logger } from '../log';
-import { gigaBytesToBytes, hexToString } from '../util';
+import CrustApi, {DetailFileInfo, FileInfo} from '../chain';
+import {logger} from '../log';
+import {gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
 
 // The initial probability is 5‰
@@ -96,8 +96,6 @@ export default class DecisionEngine {
 
     return await this.crustApi.subscribeNewHeads(addPullings);
   }
-
-
 
   /**
    * Subscribe new ipfs pin add task, scheduling by cron.ScheduledTask

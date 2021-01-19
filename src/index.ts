@@ -1,7 +1,7 @@
 // TODO: Add README
-import { argv } from 'process';
+import {argv} from 'process';
 import DecisionEngine from './decision';
-import { logger } from './log';
+import {logger} from './log';
 
 const chainAddr = argv[2] || 'ws://localhost:9944';
 const ipfsAddr = argv[3] || 'http://localhost:5001';

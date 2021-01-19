@@ -103,7 +103,11 @@ export default class CrustApi {
 
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
-      logger.info(`⛓  Chain is synchronizing, current block number ${(await this.header()).number.toNumber()}`);
+      logger.info(
+        `⛓  Chain is synchronizing, current block number ${(
+          await this.header()
+        ).number.toNumber()}`
+      );
       await sleep(6000);
     }
 
@@ -119,8 +123,8 @@ export default class CrustApi {
    */
   async isSyncing() {
     const health = await this.api.rpc.system.health();
-    let res = health.isSyncing.isTrue
-    
+    let res = health.isSyncing.isTrue;
+
     if (!res) {
       const h_before = await this.header();
       await sleep(3000);
@@ -129,7 +133,7 @@ export default class CrustApi {
         res = true;
       }
     }
-  
+
     return res;
   }
 
@@ -138,7 +142,7 @@ export default class CrustApi {
    * @returns header
    */
   async header() {
-    return this.api.rpc.chain.getHeader();;
+    return this.api.rpc.chain.getHeader();
   }
 
   /**
@@ -191,7 +195,7 @@ export default class CrustApi {
   }
 
   // TODO: add more error handling here
-  async withApiReady(): Promise<void> {
+  private async withApiReady(): Promise<void> {
     await this.api.isReadyOrError;
   }
 
