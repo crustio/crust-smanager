@@ -94,9 +94,7 @@ export default class DecisionEngine {
       this.sealingQueue.clear(bn);
     };
 
-    const unsubscribe = await this.crustApi.subscribeNewHeads(addPullings);
-
-    return unsubscribe;
+    return await this.crustApi.subscribeNewHeads(addPullings);
   }
 
   /**

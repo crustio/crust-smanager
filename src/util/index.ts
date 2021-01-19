@@ -38,3 +38,11 @@ export function addrToHostPort(addr: string): [string, string] {
 
   return [url.hostname, url.port];
 }
+
+/**
+ * Sleep XX ms
+ * @param time time to wait
+ */
+export function sleep(time: number) {
+  return new Promise(resolve => setTimeout(resolve, time));
+}
