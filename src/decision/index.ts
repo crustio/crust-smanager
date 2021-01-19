@@ -10,7 +10,7 @@ import {gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
 
 // The initial probability is 5‰
-const initialProbability = 0.005;
+const initialProbability = 1;
 
 interface Task extends BT {
   // The ipfs cid value
@@ -199,7 +199,7 @@ export default class DecisionEngine {
       logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
       if (size !== t.size) {
         logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-        return true;
+        // return true;
       }
 
       // 2. Get and judge repo can take it, make sure the free can take double file
@@ -243,6 +243,8 @@ export default class DecisionEngine {
     const fileInfo: DetailFileInfo | null = await this.crustApi.maybeGetNewFile(
       cid
     );
+
+    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(fileInfo)}`);
 
     if (
       fileInfo &&
