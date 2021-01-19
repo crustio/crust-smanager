@@ -98,6 +98,9 @@ export default class CrustApi {
    */
   // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
+    // Waiting for API
+    await this.withApiReady();
+
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
       logger.info(`⛓  Chain is synchronizing, current block number ${(await this.header()).number.toNumber()}`);
@@ -188,7 +191,7 @@ export default class CrustApi {
   }
 
   // TODO: add more error handling here
-  private async withApiReady(): Promise<void> {
+  async withApiReady(): Promise<void> {
     await this.api.isReadyOrError;
   }
 

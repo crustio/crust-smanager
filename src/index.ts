@@ -19,10 +19,8 @@ try {
   );
 
   // TODO: Get cancellation signal and handle errors?
-  de.subscribeNewFiles().catch(e => {
-    de.crustApiError = true;
+  de.subscribeNewFiles().catch(e =>
     logger.error(`💥  Caught pending queue error: ${e.toString()}`)
-  }
   );
   de.subscribePullings().catch(e =>
     logger.error(`💥  Caught pulling queue error: ${e.toString()}`)

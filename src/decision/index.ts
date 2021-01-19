@@ -26,7 +26,6 @@ export default class DecisionEngine {
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
-  public crustApiError: boolean;
 
   constructor(
     chainAddr: string,
@@ -42,7 +41,6 @@ export default class DecisionEngine {
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(50, 600);
     this.sealingQueue = new TaskQueue<Task>(30, 600);
-    this.crustApiError = false
 
     // Init the current block number
     // TODO: Do the restart mechanism
@@ -96,14 +94,10 @@ export default class DecisionEngine {
       this.sealingQueue.clear(bn);
     };
 
-    return cron.schedule('* * * * *', async () => {
-      if(this.crustApiError)
-      {
-        this.crustApiError = false;
-        await this.crustApi.subscribeNewHeads(addPullings);
-      }
-    });
+    return await this.crustApi.subscribeNewHeads(addPullings);
   }
+
+
 
   /**
    * Subscribe new ipfs pin add task, scheduling by cron.ScheduledTask
