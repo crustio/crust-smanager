@@ -79,7 +79,7 @@ export default class DecisionEngine {
         const sworkIdentity = await this.crustApi.sworkIdentity();
         if (!sworkIdentity) {
           logger.info(
-            "⚠️  Can't get swork identities, please wait your sworker to report the frist work report"
+            "⚠️  Can't get swork identity, please wait your sworker to report the frist work report"
           );
           return;
         } else {
