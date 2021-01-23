@@ -81,12 +81,15 @@ export default class DecisionEngine {
           logger.info(
             "⚠️  Can't get swork identities, please wait your sworker to report the frist work report"
           );
+          return;
         } else {
           const group = sworkIdentities.group;
           if (group === null || group === '') {
             logger.info('⚠️  Wait for the member to join group');
+            return;
           } else if (this.crustApi.getchainAccount() === group) {
             logger.error("💥  Can't use owner account to configure member");
+            return;
           }
         }
       }
