@@ -83,12 +83,14 @@ export type DetailFileInfo = typeof types.FileInfo;
 
 export default class CrustApi {
   private readonly api: ApiPromise;
+  private readonly chainAccount: string;
 
-  constructor(addr: string) {
+  constructor(addr: string, chainAccount: string) {
     this.api = new ApiPromise({
       provider: new WsProvider(addr),
       types,
     });
+    this.chainAccount = chainAccount;
   }
 
   /// READ methods
@@ -145,6 +147,15 @@ export default class CrustApi {
    */
   async header() {
     return this.api.rpc.chain.getHeader();
+  }
+
+  account()
+  {
+    return this.account;
+  }
+
+  async sworkIdentities() {
+    return await this.api.rpc.query.swork.identities(this.chainAccount);
   }
 
   /**

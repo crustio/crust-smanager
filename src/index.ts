@@ -6,6 +6,9 @@ import {logger} from './log';
 const chainAddr = argv[2] || 'ws://localhost:9944';
 const ipfsAddr = argv[3] || 'http://localhost:5001';
 const sworkerAddr = argv[4] || 'http://localhost:12222';
+// disable/isolation/member
+const nodeId = argv[5] || 'isolation';
+const chainAccount = argv[6] || '';
 const ipfsTimeout = 20000; // 20s
 const sworkerTimeout = 20000; //20s
 
@@ -14,6 +17,8 @@ try {
     chainAddr,
     ipfsAddr,
     sworkerAddr,
+    nodeId,
+    chainAccount,
     ipfsTimeout,
     sworkerTimeout
   );

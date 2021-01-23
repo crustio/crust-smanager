@@ -23,6 +23,7 @@ export default class DecisionEngine {
   private readonly crustApi: CrustApi;
   private readonly ipfsApi: IpfsApi;
   private readonly sworkerApi: SworkerApi;
+  private readonly nodeId: string;
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
@@ -31,12 +32,15 @@ export default class DecisionEngine {
     chainAddr: string,
     ipfsAddr: string,
     sworkerAddr: string,
+    nodeId: string,
+    chainAccount: string,
     ito: number,
     sto: number
   ) {
-    this.crustApi = new CrustApi(chainAddr);
+    this.crustApi = new CrustApi(chainAddr, chainAccount);
     this.ipfsApi = new IpfsApi(ipfsAddr, ito);
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
+    this.nodeId = nodeId;
 
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(50, 600);
@@ -70,10 +74,21 @@ export default class DecisionEngine {
       // 3. Update current block number
       this.currentBn = bn;
 
-      // 4. Try to get new files
+      // 4. If the node identity is member, wait for it to join group
+      if (this.nodeId == "member" ) {
+        const groupAddr = (await this.crustApi.sworkIdentities()).group
+        if (groupAddr == null || groupAddr == '') {
+          logger.info('⚠️  Wait for the member to join group');
+        }
+        else if (this.crustApi.account == groupAddr) {
+          logger.error('💥  Can\'t use owner account to configure member')
+        }
+      }
+
+      // 5. Try to get new files
       const newFiles: FileInfo[] = await this.crustApi.parseNewFilesByBlock(bh);
 
-      // 5. If got new files, parse and push into pulling queue
+      // 6. If got new files, parse and push into pulling queue
       for (const newFile of newFiles) {
         const nt: Task = {
           cid: hexToString(newFile.cid),
@@ -89,7 +104,7 @@ export default class DecisionEngine {
         this.pullingQueue.push(nt);
       }
 
-      // 6. Check and clean outdated tasks
+      // 7. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
       this.sealingQueue.clear(bn);
     };
