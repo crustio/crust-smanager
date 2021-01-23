@@ -149,11 +149,11 @@ export default class CrustApi {
     return this.api.rpc.chain.getHeader();
   }
 
-  getchainAccount() {
+  getChainAccount() {
     return this.chainAccount;
   }
 
-  async sworkIdentities() {
+  async sworkIdentity() {
     return parseObj(await this.api.query.swork.identities(this.chainAccount));
   }
 
