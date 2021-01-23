@@ -75,13 +75,19 @@ export default class DecisionEngine {
       this.currentBn = bn;
 
       // 4. If the node identity is member, wait for it to join group
-      if (this.nodeId == "member" ) {
-        const groupAddr = (await this.crustApi.sworkIdentities()).group
-        if (groupAddr == null || groupAddr == '') {
-          logger.info('⚠️  Wait for the member to join group');
-        }
-        else if (this.crustApi.account == groupAddr) {
-          logger.error('💥  Can\'t use owner account to configure member')
+      if (this.nodeId === 'member') {
+        const sworkIdentities = await this.crustApi.sworkIdentities();
+        if (sworkIdentities === null) {
+          logger.error(
+            "💥  Can't get swork identities, please check your chain account"
+          );
+        } else {
+          const group = sworkIdentities.group;
+          if (group === null || group === '') {
+            logger.info('⚠️  Wait for the member to join group');
+          } else if (this.crustApi.getchainAccount() === group) {
+            logger.error("💥  Can't use owner account to configure member");
+          }
         }
       }
 
