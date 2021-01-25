@@ -187,19 +187,20 @@ export default class DecisionEngine {
   async subscribeSealings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
       const oldSts: Task[] = this.sealingQueue.tasks;
-      const failedSts: Task[] = [];
-
-      // 0. Clear sealing queue first
-      this.sealingQueue.tasks = [];
 
       logger.info('⏳  Checking sealing queue...');
       logger.info(`  ↪ 💌  Sealing queue length: ${oldSts.length}`);
 
-      // 1. If sWorker locked
+      // 0. If sWorker locked
       if (this.locker.get('sworker')) {
-        logger.info('  ↪ 💌  Already has sealing task in sWorker');
+        logger.warn('  ↪ 💌  Already has sealing task in sWorker');
         return;
       }
+
+      const failedSts: Task[] = [];
+      // 1. Clear sealing queue first
+      this.sealingQueue.tasks = [];
+
       // 2. Lock sWorker
       this.locker.set('sworker', true);
 
