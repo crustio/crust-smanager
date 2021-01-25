@@ -137,6 +137,7 @@ export default class DecisionEngine {
     return cron.schedule('* * * * *', async () => {
       // 1. Loop and pop all pulling tasks
       const oldPts: Task[] = this.pullingQueue.tasks;
+      const failedPts: Task[] = [];
       logger.info('⏳  Checking pulling queue ...');
       logger.info(`  ↪ 📨  Pulling queue length: ${oldPts.length}`);
 
@@ -165,9 +166,12 @@ export default class DecisionEngine {
             });
         } else {
           // d. Push back to pulling queue
-          this.pullingQueue.push(pt);
+          failedPts.push(pt);
         }
       }
+
+      // Push back failed tasks
+      this.pullingQueue.tasks.concat(failedPts);
     });
   }
 
@@ -180,6 +184,7 @@ export default class DecisionEngine {
   async subscribeSealings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
       const oldSts: Task[] = this.sealingQueue.tasks;
+      const failedSts: Task[] = [];
       logger.info('⏳  Checking sealing queue...');
       logger.info(`  ↪ 💌  Sealing queue length: ${oldSts.length}`);
 
@@ -188,12 +193,12 @@ export default class DecisionEngine {
         logger.info('  ↪ 💌  Already has sealing task in sWorker');
         return;
       }
-      // Lock sWorker
+      // 1. Lock sWorker
       this.locker.set('sworker', true);
 
-      // 1. Loop sealing tasks
+      // 2. Loop sealing tasks
       for (const st of oldSts) {
-        // 2. Judge if sealing successful, otherwise push back to sealing tasks
+        // 3. Judge if sealing successful, otherwise push back to sealing tasks
         if (await this.pickUpSealing(st)) {
           logger.info(
             `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
@@ -218,11 +223,13 @@ export default class DecisionEngine {
         }
 
         // Otherwise, push back to sealing queue
-        this.sealingQueue.tasks.push(st);
+        failedSts.push(st);
       }
 
-      // Unlock sWorker
+      // 4. Unlock sWorker
       this.locker.set('sworker', false);
+      // 5. Push back failed tasks
+      this.sealingQueue.tasks.concat(failedSts);
     });
   }
 
