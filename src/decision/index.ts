@@ -9,7 +9,6 @@ import {logger} from '../log';
 import {gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {timeout} from 'promise-timeout';
 
 // The initial probability is 5‰
 const initialProbability = 1;
