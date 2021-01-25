@@ -1,4 +1,5 @@
 import axios, {AxiosInstance} from 'axios';
+import {logger} from '../log';
 import {parseObj} from '../util';
 
 export default class SworkerApi {
@@ -20,12 +21,17 @@ export default class SworkerApi {
    * @throws sWorker api error | timeout
    */
   async seal(cid: string): Promise<boolean> {
-    const res = await this.sworker.post(
-      '/storage/seal',
-      JSON.stringify({cid: cid})
-    );
+    try {
+      const res = await this.sworker.post(
+        '/storage/seal',
+        JSON.stringify({cid: cid})
+      );
 
-    return res.status === 200;
+      return res.status === 200;
+    } catch (e) {
+      logger.error(`Sealing file ${cid} timeout or error`);
+      return false;
+    }
   }
 
   /**
@@ -35,12 +41,17 @@ export default class SworkerApi {
    * @throws sWorker api error | timeout
    */
   async delete(cid: string): Promise<boolean> {
-    const res = await this.sworker.post(
-      '/storage/delete',
-      JSON.stringify({cid: cid})
-    );
+    try {
+      const res = await this.sworker.post(
+        '/storage/delete',
+        JSON.stringify({cid: cid})
+      );
 
-    return res.status === 200;
+      return res.status === 200;
+    } catch (e) {
+      logger.error(`Deleting file ${cid} timeout or error`);
+      return false;
+    }
   }
 
   /// READ methods

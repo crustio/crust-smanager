@@ -212,17 +212,7 @@ export default class DecisionEngine {
             `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
           );
 
-          const sealRes = await timeout(
-            new Promise((resolve, reject) => {
-              this.sworkerApi
-                .seal(st.cid)
-                .then(() => resolve(true)) // Return true
-                .catch(reject);
-            }),
-            8000 * 1000 // 8000s timeout
-          );
-
-          if (sealRes) {
+          if (await this.sworkerApi.seal(st.cid)) {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
             continue; // Continue with next sealing task
           } else {
