@@ -28,7 +28,7 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(`  ↪ 💖  Call sWorker seal, response: ${inspect(res)}`);
+      logger.info(`  ↪ 💖  Call sWorker seal, response: ${inspect(res.data)}`);
 
       return res.status === 200;
     } catch (e) {
@@ -50,7 +50,9 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(`  ↪ 💖  Call sWorker delete, response: ${inspect(res)}`);
+      logger.info(
+        `  ↪ 💖  Call sWorker delete, response: ${inspect(res.data)}`
+      );
 
       return res.status === 200;
     } catch (e) {

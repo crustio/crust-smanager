@@ -133,7 +133,8 @@ export default class DecisionEngine {
    * @throws ipfsApi error
    */
   async subscribePullings(): Promise<cron.ScheduledTask> {
-    return cron.schedule('* * * * *', async () => {
+    // Call IPFS pulling every 37 seconds
+    return cron.schedule('37 * * * * *', async () => {
       const oldPts: Task[] = this.pullingQueue.tasks;
       const failedPts: Task[] = [];
 
@@ -185,7 +186,8 @@ export default class DecisionEngine {
    * @throws sWorkerApi error
    */
   async subscribeSealings(): Promise<cron.ScheduledTask> {
-    return cron.schedule('* * * * *', async () => {
+    // Call sWorker sealing every 57 seconds
+    return cron.schedule('57 * * * * *', async () => {
       const oldSts: Task[] = this.sealingQueue.tasks;
 
       logger.info('⏳  Checking sealing queue...');
