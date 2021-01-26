@@ -1,6 +1,7 @@
 import axios, {AxiosInstance} from 'axios';
 import {logger} from '../log';
 import {parseObj} from '../util';
+import {inspect} from 'util';
 
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
@@ -27,7 +28,7 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(`  ↪ 💖  Call sWorker seal, response: ${res}`);
+      logger.info(`  ↪ 💖  Call sWorker seal, response: ${inspect(res)}`);
 
       return res.status === 200;
     } catch (e) {
@@ -49,7 +50,7 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(`  ↪ 💖  Call sWorker delete, response: ${res}`);
+      logger.info(`  ↪ 💖  Call sWorker delete, response: ${inspect(res)}`);
 
       return res.status === 200;
     } catch (e) {
