@@ -9,8 +9,8 @@ const sworkerAddr = argv[4] || 'http://localhost:12222';
 // disable/isolation/member
 const nodeId = argv[5] || 'isolation';
 const chainAccount = argv[6] || '';
-const ipfsTimeout = 20000; // 20s
-const sworkerTimeout = 20000; //20s
+const ipfsTimeout = 8000 * 1000; // 8000s
+const sworkerTimeout = 8000 * 1000; //8000s
 
 try {
   const de = new DecisionEngine(

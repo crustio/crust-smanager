@@ -3,7 +3,6 @@ import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {parseObj, sleep} from '../util';
-import * as cron from 'node-cron';
 
 const types = {
   Address: 'AccountId',

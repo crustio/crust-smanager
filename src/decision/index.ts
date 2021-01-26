@@ -8,6 +8,7 @@ import CrustApi, {DetailFileInfo, FileInfo} from '../chain';
 import {logger} from '../log';
 import {gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
+import BigNumber from 'bignumber.js';
 
 // The initial probability is 5‰
 const initialProbability = 1;
@@ -24,6 +25,7 @@ export default class DecisionEngine {
   private readonly ipfsApi: IpfsApi;
   private readonly sworkerApi: SworkerApi;
   private readonly nodeId: string;
+  private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
@@ -49,6 +51,9 @@ export default class DecisionEngine {
     // Init the current block number
     // TODO: Do the restart mechanism
     this.currentBn = 0;
+
+    // Task locker to make sure there's only 1 task
+    this.locker = new Map<string, boolean>();
   }
 
   /**
@@ -129,12 +134,16 @@ export default class DecisionEngine {
    */
   async subscribePullings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
-      // 1. Loop and pop all pulling tasks
       const oldPts: Task[] = this.pullingQueue.tasks;
-      const newPts = new Array<Task>();
+      const failedPts: Task[] = [];
+
+      // 0. Pop all pulling queue
+      this.pullingQueue.tasks = [];
+
       logger.info('⏳  Checking pulling queue ...');
       logger.info(`  ↪ 📨  Pulling queue length: ${oldPts.length}`);
 
+      // 1. Loop old pulling tasks
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs, otherwise push back to pulling tasks
         if (await this.pickUpPulling(pt)) {
@@ -142,7 +151,7 @@ export default class DecisionEngine {
             `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
           );
           // Async pulling
-          this.ipfsApi
+          await this.ipfsApi
             .pin(pt.cid)
             .then(pinRst => {
               if (!pinRst) {
@@ -160,12 +169,12 @@ export default class DecisionEngine {
             });
         } else {
           // d. Push back to pulling queue
-          newPts.push(pt);
+          failedPts.push(pt);
         }
       }
 
-      // 3. Send errors back to pulling queue
-      this.pullingQueue.tasks = newPts;
+      // Push back failed tasks
+      this.pullingQueue.tasks.concat(failedPts);
     });
   }
 
@@ -178,17 +187,30 @@ export default class DecisionEngine {
   async subscribeSealings(): Promise<cron.ScheduledTask> {
     return cron.schedule('* * * * *', async () => {
       const oldSts: Task[] = this.sealingQueue.tasks;
-      const newSts = new Array<Task>();
+
       logger.info('⏳  Checking sealing queue...');
       logger.info(`  ↪ 💌  Sealing queue length: ${oldSts.length}`);
 
-      // 1. Loop sealing tasks
+      // 0. If sWorker locked
+      if (this.locker.get('sworker')) {
+        logger.warn('  ↪ 💌  Already has sealing task in sWorker');
+        return;
+      }
+
+      // 1. Clear sealing queue
+      this.sealingQueue.tasks = [];
+
+      // 2. Lock sWorker
+      this.locker.set('sworker', true);
+
+      // 3. Loop all old sealing tasks
       for (const st of oldSts) {
-        // 2. Judge if sealing successful, otherwise push back to sealing tasks
+        // 4. Judge if sealing successful, otherwise push back to sealing tasks
         if (await this.pickUpSealing(st)) {
           logger.info(
             `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
           );
+
           if (await this.sworkerApi.seal(st.cid)) {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
             continue; // Continue with next sealing task
@@ -196,13 +218,10 @@ export default class DecisionEngine {
             logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
           }
         }
-
-        // Otherwise, push back to sealing queue
-        newSts.push(st);
       }
 
-      // 3. Push back to sealing queue
-      this.sealingQueue.tasks = newSts;
+      // 5. Unlock sWorker
+      this.locker.set('sworker', false);
     });
   }
 
@@ -228,15 +247,16 @@ export default class DecisionEngine {
 
       // 2. Get and judge repo can take it, make sure the free can take double file
       const free = await this.freeSpace();
-      if (free <= t.size * 2) {
-        logger.warn(`  ↪ ⚠️  Free space not enought ${free} < ${size}*2`);
+      // If free < t.size * 2.2, 0.2 for the extra sealed size
+      if (free.lte(t.size * 2.2)) {
+        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
         return false;
       }
 
       // 3. Judge if it already been taked on chain or shoot it by chance
       return this.shouldPull(t.cid, t.bn);
     } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs error, detail with ${err}`);
+      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
   }
@@ -248,8 +268,9 @@ export default class DecisionEngine {
   private async pickUpSealing(t: Task): Promise<boolean> {
     const free = await this.freeSpace();
 
-    if (free <= t.size) {
-      logger.warn(`  ↪ ⚠️  Free space not enought ${free} < ${t.size}`);
+    // If free < file size
+    if (free.lt(t.size)) {
+      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}`);
       return false;
     }
 
@@ -316,7 +337,7 @@ export default class DecisionEngine {
    * Got free space size from sWorker
    * @returns free space size
    */
-  private async freeSpace(): Promise<number> {
+  private async freeSpace(): Promise<BigNumber> {
     const freeGBSize = await this.sworkerApi.free();
     return gigaBytesToBytes(freeGBSize);
   }

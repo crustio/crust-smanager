@@ -1,4 +1,5 @@
 import {URL} from 'url';
+import BigNumber from 'bignumber.js';
 
 /**
  * Parse object into JSON object
@@ -22,10 +23,10 @@ export function hexToString(hex: string): string {
  * number's max value: 9007199254740991
  * so basically we don't need BigNumber at all
  * @param gb GB size
- * @returns B size
+ * @returns Byte size
  */
-export function gigaBytesToBytes(gb: number): number {
-  return gb * 1073741824;
+export function gigaBytesToBytes(gb: number): BigNumber {
+  return new BigNumber(gb).multipliedBy(1073741824);
 }
 
 /**
