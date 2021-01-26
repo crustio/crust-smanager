@@ -27,15 +27,11 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(res)}`
-      );
+      logger.info(`  ↪ 💖  Call sWorker seal, response: ${parseObj(res)}`);
 
       return res.status === 200;
     } catch (e) {
-      logger.error(
-        `Sealing file ${cid} timeout or error: ${JSON.stringify(e)}`
-      );
+      logger.error(`Sealing file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -53,15 +49,11 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker delete, response: ${JSON.stringify(res)}`
-      );
+      logger.info(`  ↪ 💖  Call sWorker delete, response: ${parseObj(res)}`);
 
       return res.status === 200;
     } catch (e) {
-      logger.error(
-        `Deleting file ${cid} timeout or error: ${JSON.stringify(e)}`
-      );
+      logger.error(`Deleting file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
