@@ -33,7 +33,9 @@ export default class SworkerApi {
 
       return res.status === 200;
     } catch (e) {
-      logger.error(`Sealing file ${cid} timeout or error`);
+      logger.error(
+        `Sealing file ${cid} timeout or error: ${JSON.stringify(e)}`
+      );
       return false;
     }
   }
@@ -57,7 +59,9 @@ export default class SworkerApi {
 
       return res.status === 200;
     } catch (e) {
-      logger.error(`Deleting file ${cid} timeout or error`);
+      logger.error(
+        `Deleting file ${cid} timeout or error: ${JSON.stringify(e)}`
+      );
       return false;
     }
   }
