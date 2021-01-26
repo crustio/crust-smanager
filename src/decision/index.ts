@@ -249,7 +249,7 @@ export default class DecisionEngine {
       const free = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enought ${free} < ${size}*2`);
+        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
         return false;
       }
 
@@ -270,7 +270,7 @@ export default class DecisionEngine {
 
     // If free < file size
     if (free.lt(t.size)) {
-      logger.warn(`  ↪ ⚠️  Free space not enought ${free} < ${t.size}`);
+      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}`);
       return false;
     }
 
