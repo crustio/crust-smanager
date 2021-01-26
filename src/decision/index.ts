@@ -151,7 +151,7 @@ export default class DecisionEngine {
             `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
           );
           // Async pulling
-          this.ipfsApi
+          await this.ipfsApi
             .pin(pt.cid)
             .then(pinRst => {
               if (!pinRst) {
@@ -197,8 +197,7 @@ export default class DecisionEngine {
         return;
       }
 
-      const failedSts: Task[] = [];
-      // 1. Clear sealing queue first
+      // 1. Clear sealing queue
       this.sealingQueue.tasks = [];
 
       // 2. Lock sWorker
@@ -216,18 +215,13 @@ export default class DecisionEngine {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
             continue; // Continue with next sealing task
           } else {
-            logger.error(`  ↪ 💥  Seal ${st.cid} failed or be occupied`);
+            logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
           }
         }
-
-        // Otherwise, push back to sealing queue
-        failedSts.push(st);
       }
 
       // 5. Unlock sWorker
       this.locker.set('sworker', false);
-      // 6. Push back failed tasks
-      this.sealingQueue.tasks.concat(failedSts);
     });
   }
 
@@ -262,7 +256,7 @@ export default class DecisionEngine {
       // 3. Judge if it already been taked on chain or shoot it by chance
       return this.shouldPull(t.cid, t.bn);
     } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs error, detail with ${err}`);
+      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
   }

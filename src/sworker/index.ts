@@ -27,6 +27,10 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
+      logger.info(
+        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(res)}`
+      );
+
       return res.status === 200;
     } catch (e) {
       logger.error(`Sealing file ${cid} timeout or error`);
@@ -45,6 +49,10 @@ export default class SworkerApi {
       const res = await this.sworker.post(
         '/storage/delete',
         JSON.stringify({cid: cid})
+      );
+
+      logger.info(
+        `  ↪ 💖  Call sWorker delete, response: ${JSON.stringify(res)}`
       );
 
       return res.status === 200;
