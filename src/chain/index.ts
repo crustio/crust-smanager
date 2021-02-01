@@ -217,7 +217,7 @@ export default class CrustApi {
     const exData = parseObj(ex.method).args;
     return {
       cid: exData.cid,
-      size: exData.file_size,
+      size: exData.reported_file_size,
     };
   }
 }

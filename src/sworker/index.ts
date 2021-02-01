@@ -1,6 +1,7 @@
 import axios, {AxiosInstance} from 'axios';
 import {logger} from '../log';
 import {parseObj} from '../util';
+import {inspect} from 'util';
 
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
@@ -27,13 +28,11 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(res)}`
-      );
+      logger.info(`  ↪ 💖  Call sWorker seal, response: ${inspect(res.data)}`);
 
       return res.status === 200;
     } catch (e) {
-      logger.error(`Sealing file ${cid} timeout or error`);
+      logger.error(`Sealing file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -52,12 +51,12 @@ export default class SworkerApi {
       );
 
       logger.info(
-        `  ↪ 💖  Call sWorker delete, response: ${JSON.stringify(res)}`
+        `  ↪ 💖  Call sWorker delete, response: ${inspect(res.data)}`
       );
 
       return res.status === 200;
     } catch (e) {
-      logger.error(`Deleting file ${cid} timeout or error`);
+      logger.error(`Deleting file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
