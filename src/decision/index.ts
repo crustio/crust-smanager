@@ -4,14 +4,18 @@ import * as _ from 'lodash';
 import {Header} from '@polkadot/types/interfaces';
 import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, {DetailFileInfo, FileInfo} from '../chain';
+import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
 import {getRandSec, gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
 
-// The initial probability is 5‰
+// The initial probability is 100‰
 const initialProbability = 1;
+// Current MAX replicas
+const maxFileReplicas = 70;
+// Base pin timeout
+const basePinTimeout = 5 * 60 * 1000; // 5 minutes
 
 interface Task extends BT {
   // The ipfs cid value
@@ -152,12 +156,17 @@ export default class DecisionEngine {
           logger.info(
             `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
           );
+
+          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
+          // (baseSpeedReference: 100kB/s)
+          const to = basePinTimeout + (pt.size / 1024 / 100) * 1000;
+
           // Async pulling
           await this.ipfsApi
-            .pin(pt.cid)
+            .pin(pt.cid, to)
             .then(pinRst => {
               if (!pinRst) {
-                // a. TODO: Maybe push back to pulling queue?
+                // a. Pass it with error
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
               } else {
                 // b. Pin successfully, add into sealing queue
@@ -242,12 +251,18 @@ export default class DecisionEngine {
   private async pickUpPulling(t: Task): Promise<boolean> {
     try {
       // 1. Get and judge file size is match
-      const size = await this.ipfsApi.size(t.cid);
-      logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
-      if (size !== t.size) {
-        logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-        // return true;
-      }
+      // TODO: Ideally, we should compare the REAL file size(from ipfs) and
+      // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
+      // so we choose to use on-chain size in the default strategy
+
+      // Ideally code:
+      // const size = await this.ipfsApi.size(t.cid);
+      // logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
+      // if (size !== t.size) {
+      //   logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
+      //   // CUSTOMER STRATEGY, can pick or not
+      // }
+      const size = t.size;
 
       // 2. Get and judge repo can take it, make sure the free can take double file
       const free = await this.freeSpace();
@@ -278,30 +293,30 @@ export default class DecisionEngine {
       return false;
     }
 
-    return !(await this.isReplicaFull(t.cid));
+    return true;
   }
 
   /**
-   * Judge if replica on chain is full
+   * Judge if replica on chain is full or file on chain is exist
    * @param cid ipfs cid value
-   * @returns boolean
+   * @returns wether file not exist or replica is full
    * @throws crustApi error
    */
-  private async isReplicaFull(cid: string): Promise<boolean> {
-    // TODO: Set flag to let user choose enable the `only take order file`
-    const fileInfo: DetailFileInfo | null = await this.crustApi.maybeGetNewFile(
+  private async isReplicaFullOrFileNotExist(cid: string): Promise<boolean> {
+    const usedInfo: UsedInfo | null = await this.crustApi.maybeGetFileUsedInfo(
       cid
     );
 
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(fileInfo)}`);
+    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
 
-    if (
-      fileInfo &&
-      fileInfo.replicas.length > Number(fileInfo.expected_replica_count)
-    ) {
+    if (usedInfo && _.size(usedInfo.groups) > maxFileReplicas) {
       logger.warn(
-        `  ↪ ⚠️  File replica already full with ${fileInfo.replicas.length}`
+        `  ↪ ⚠️  File replica already full with ${usedInfo.groups.length}`
       );
+
+      return true;
+    } else if (!usedInfo) {
+      logger.warn(`  ↪ ⚠️  File ${cid} not exist`);
       return true;
     }
 
@@ -317,8 +332,8 @@ export default class DecisionEngine {
    * @throws crustApi error
    */
   private async shouldPull(cid: string, bn: number): Promise<boolean> {
-    // If replicas already reach the limit
-    if (await this.isReplicaFull(cid)) {
+    // If replicas already reach the limit or file not exist
+    if (await this.isReplicaFullOrFileNotExist(cid)) {
       return false;
     }
     // Else, calculate the probability with `expired_date`
@@ -328,7 +343,7 @@ export default class DecisionEngine {
 
     // 2. Calculate probability
     const multiple = (this.currentBn - bn) / 1 + 1; // 1 unit means 1min
-    const probability = initialProbability * multiple; // probability will turns into 100% after 200 * 1 unit = 200min
+    const probability = initialProbability * multiple; // probability will turns into 100% after 30 * 1 unit = 30min
     logger.info(
       `💓  Current randNum is ${randNum}, New target is ${probability}, Current block is ${this.currentBn}, Task block is ${bn}`
     );
