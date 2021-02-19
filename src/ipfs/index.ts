@@ -9,7 +9,6 @@ export default class IpfsApi {
   constructor(ipfsAddr: string, mto: number) {
     const [host, port] = addrToHostPort(ipfsAddr);
 
-    // TODO: Check connection and ipfsAddr is legal
     this.ipfs = IpfsHttpClient({
       host: host,
       port: port,
@@ -21,11 +20,12 @@ export default class IpfsApi {
   /**
    * Pin add file by a given cid asyncly
    * @param c ipfs cid value
+   * @param to timeout for pin operation
    * @throws illegal cid | timeout
    */
-  async pin(c: string): Promise<boolean> {
+  async pin(c: string, to: number): Promise<boolean> {
     const cid = new CID(c);
-    const pin = await this.ipfs.pin.add(new CID(cid));
+    const pin = await this.ipfs.pin.add(new CID(cid), {timeout: to});
     return cid.equals(pin);
   }
 

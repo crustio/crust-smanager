@@ -4,6 +4,7 @@ import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {parseObj, sleep} from '../util';
 
+// TODO: use crust.js types instead of this savage way
 const types = {
   Address: 'AccountId',
   AddressInfo: 'Vec<u8>',
@@ -61,7 +62,8 @@ const types = {
   SworkerSignature: 'Vec<u8>',
   UsedInfo: {
     used_size: 'u64',
-    groups: 'BTreeSet<SworkerAnchor>',
+    reported_group_count: 'u32',
+    groups: 'BTreeMap<SworkerAnchor, bool>',
   },
   WorkReport: {
     report_slot: 'u64',
@@ -78,7 +80,7 @@ export interface FileInfo {
   size: number;
 }
 
-export type DetailFileInfo = typeof types.FileInfo;
+export type UsedInfo = typeof types.UsedInfo;
 
 export default class CrustApi {
   private readonly api: ApiPromise;
@@ -196,16 +198,16 @@ export default class CrustApi {
   /**
    * Get file info from chain by cid
    * @param cid Ipfs file cid
-   * @returns Option<DetailFileInfo>
+   * @returns Option<UsedInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetNewFile(cid: string): Promise<DetailFileInfo | null> {
+  async maybeGetFileUsedInfo(cid: string): Promise<UsedInfo | null> {
     await this.withApiReady();
 
-    const [fileInfo, _usedInfo] = parseObj(
+    const [_fileInfo, usedInfo] = parseObj(
       await this.api.query.market.files(cid)
     );
-    return fileInfo;
+    return usedInfo;
   }
 
   // TODO: add more error handling here
