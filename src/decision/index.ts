@@ -6,7 +6,7 @@ import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {DetailFileInfo, FileInfo} from '../chain';
 import {logger} from '../log';
-import {gigaBytesToBytes, hexToString} from '../util';
+import {getRandSec, gigaBytesToBytes, hexToString} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
 
@@ -83,14 +83,14 @@ export default class DecisionEngine {
       if (this.nodeId === 'member') {
         const sworkIdentity = await this.crustApi.sworkIdentity();
         if (!sworkIdentity) {
-          logger.info(
+          logger.warn(
             "⚠️  Can't get swork identity, please wait your sworker to report the frist work report"
           );
           return;
         } else {
           const group = sworkIdentity.group;
           if (!group) {
-            logger.info('⚠️  Wait for the member to join group');
+            logger.warn('⚠️  Wait for the member to join group');
             return;
           } else if (this.crustApi.getChainAccount() === group) {
             logger.error("💥  Can't use owner account to configure member");
@@ -133,8 +133,9 @@ export default class DecisionEngine {
    * @throws ipfsApi error
    */
   async subscribePullings(): Promise<cron.ScheduledTask> {
-    // Call IPFS pulling every 37 seconds
-    return cron.schedule('37 * * * * *', async () => {
+    const randSec = getRandSec(20);
+    // Call IPFS pulling every ${randSec}
+    return cron.schedule(`${randSec} * * * * *`, async () => {
       const oldPts: Task[] = this.pullingQueue.tasks;
       const failedPts: Task[] = [];
 
@@ -186,8 +187,9 @@ export default class DecisionEngine {
    * @throws sWorkerApi error
    */
   async subscribeSealings(): Promise<cron.ScheduledTask> {
-    // Call sWorker sealing every 57 seconds
-    return cron.schedule('57 * * * * *', async () => {
+    const randSec = getRandSec(50);
+    // Call sWorker sealing every ${randSec}
+    return cron.schedule(`${randSec} * * * * *`, async () => {
       const oldSts: Task[] = this.sealingQueue.tasks;
 
       logger.info('⏳  Checking sealing queue...');

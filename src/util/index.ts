@@ -47,3 +47,11 @@ export function addrToHostPort(addr: string): [string, string] {
 export function sleep(time: number) {
   return new Promise(resolve => setTimeout(resolve, time));
 }
+
+/**
+ * Get random second
+ * @returns 0-60s
+ */
+export function getRandSec(seed: number): number {
+  return Math.round((Math.random() * Date.now() + seed) % 60);
+}
