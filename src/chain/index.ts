@@ -4,7 +4,6 @@ import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {parseObj, sleep} from '../util';
 import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
-
 export interface FileInfo {
   cid: string;
   size: number;
@@ -12,18 +11,29 @@ export interface FileInfo {
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
 
-logger.info(`shenmene: ${JSON.stringify(crustTypes.market.types.UsedInfo)}`);
-
 export default class CrustApi {
-  private readonly api: ApiPromise;
+  private readonly addr: string;
+  private api!: ApiPromise;
   private readonly chainAccount: string;
 
   constructor(addr: string, chainAccount: string) {
+    this.addr = addr;
+    this.chainAccount = chainAccount;
+    this.initApi();
+  }
+
+  initApi() {
+    if (this.api && this.api.disconnect) {
+      this.api
+        .disconnect()
+        .then(() => {})
+        .catch(() => {});
+    }
+
     this.api = new ApiPromise({
-      provider: new WsProvider(addr),
+      provider: new WsProvider(this.addr),
       typesBundle: typesBundleForPolkadot,
     });
-    this.chainAccount = chainAccount;
   }
 
   /// READ methods
@@ -33,10 +43,13 @@ export default class CrustApi {
    * @returns unsubscribe signal
    * @throws ApiPromise error
    */
-  // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
     // Waiting for API
-    await this.withApiReady();
+    while (!(await this.withApiReady())) {
+      logger.info('⛓  Connection broken, waiting for chain running.');
+      await sleep(6000); // IMPORTANT: Sequential matters(need give time for create ApiPromise)
+      this.initApi(); // Try to recreate api to connect running chain
+    }
 
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
@@ -143,8 +156,14 @@ export default class CrustApi {
   }
 
   // TODO: add more error handling here
-  private async withApiReady(): Promise<void> {
-    await this.api.isReadyOrError;
+  private async withApiReady(): Promise<boolean> {
+    try {
+      await this.api.isReadyOrError;
+      return true;
+    } catch (e) {
+      logger.error(`💥  Error connecting with Chain: ${e.toString()}`);
+      return false;
+    }
   }
 
   private parseFileInfo(ex: Extrinsic): FileInfo {
