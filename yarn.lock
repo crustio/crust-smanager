@@ -30,6 +30,13 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
+"@crustio/type-definitions@0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@crustio/type-definitions/-/type-definitions-0.0.3.tgz#331318cc852f6db24c65c347ab22816bb813ccf4"
+  integrity sha512-MCcLA9Du+pvRbZypmf6iQTno1HhHEiKhpndq7R67KKzJfKH2qEybjrEQCzNtumfjJPTgWKmt+Nghe4myM+awEg==
+  dependencies:
+    "@open-web3/orml-type-definitions" "^0.8.2-9"
+
 "@dabh/diagnostics@^2.0.2":
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@dabh/diagnostics/-/diagnostics-2.0.2.tgz"
@@ -80,6 +87,11 @@
   dependencies:
     "@nodelib/fs.scandir" "2.1.3"
     fastq "^1.6.0"
+
+"@open-web3/orml-type-definitions@^0.8.2-9":
+  version "0.8.2-10"
+  resolved "https://registry.yarnpkg.com/@open-web3/orml-type-definitions/-/orml-type-definitions-0.8.2-10.tgz#1ae6b4709609f4a03830afcfdc271e339bf81bce"
+  integrity sha512-VfhPgrRIi/ArGDBCwjWcKWrVsm6gDD333kh68Efui408i/2yojEbHVVehqjX6IiLupQsimWCEphwqgezkJRtEw==
 
 "@polkadot/api-derive@3.3.1":
   version "3.3.1"
