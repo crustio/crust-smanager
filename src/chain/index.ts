@@ -3,95 +3,37 @@ import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {parseObj, sleep} from '../util';
-
-// TODO: use crust.js types instead of this savage way
-const types = {
-  Address: 'AccountId',
-  AddressInfo: 'Vec<u8>',
-  ETHAddress: 'Vec<u8>',
-  EthereumTxHash: 'H256',
-  FileAlias: 'Vec<u8>',
-  FileInfo: {
-    file_size: 'u64',
-    expired_on: 'BlockNumber',
-    claimed_at: 'BlockNumber',
-    amount: 'Balance',
-    expected_replica_count: 'u32',
-    reported_replica_count: 'u32',
-    replicas: 'Vec<Replica<AccountId>>',
-  },
-  Guarantee: {
-    targets: 'Vec<IndividualExposure<AccountId, Balance>>',
-    total: 'Compact<Balance>',
-    submitted_in: 'EraIndex',
-    suppressed: 'bool',
-  },
-  IASSig: 'Vec<u8>',
-  Identity: {
-    anchor: 'SworkerAnchor',
-    group: 'Option<AccountId>',
-  },
-  ISVBody: 'Vec<u8>',
-  LookupSource: 'AccountId',
-  MerchantLedger: {
-    reward: 'Balance',
-    pledge: 'Balance',
-  },
-  MerkleRoot: 'Vec<u8>',
-  ReportSlot: 'u64',
-  Replica: {
-    who: 'AccountId',
-    valid_at: 'BlockNumber',
-    anchor: 'SworkerAnchor',
-  },
-  Releases: {
-    _enum: ['V1_0_0', 'V2_0_0'],
-  },
-  PKInfo: {
-    code: 'SworkerCode',
-    allow_report_slot: 'ReportSlot',
-    anchor: 'Option<SworkerAnchor>',
-  },
-  Status: {
-    _enum: ['Free', 'Reserved'],
-  },
-  SworkerAnchor: 'Vec<u8>',
-  SworkerCert: 'Vec<u8>',
-  SworkerCode: 'Vec<u8>',
-  SworkerPubKey: 'Vec<u8>',
-  SworkerSignature: 'Vec<u8>',
-  UsedInfo: {
-    used_size: 'u64',
-    reported_group_count: 'u32',
-    groups: 'BTreeMap<SworkerAnchor, bool>',
-  },
-  WorkReport: {
-    report_slot: 'u64',
-    used: 'u64',
-    free: 'u64',
-    reported_files_size: 'u64',
-    reported_srd_root: 'MerkleRoot',
-    reported_files_root: 'MerkleRoot',
-  },
-};
-
+import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
 export interface FileInfo {
   cid: string;
   size: number;
 }
 
-export type UsedInfo = typeof types.UsedInfo;
+export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
 
 export default class CrustApi {
-  private readonly api: ApiPromise;
+  private readonly addr: string;
+  private api!: ApiPromise;
   private readonly chainAccount: string;
 
   constructor(addr: string, chainAccount: string) {
-    this.api = new ApiPromise({
-      provider: new WsProvider(addr),
-      types,
-    });
+    this.addr = addr;
     this.chainAccount = chainAccount;
+    this.initApi();
+  }
+
+  initApi() {
+    if (this.api && this.api.disconnect) {
+      this.api
+        .disconnect()
+        .then(() => {})
+        .catch(() => {});
+    }
+
+    this.api = new ApiPromise({
+      provider: new WsProvider(this.addr),
+      typesBundle: typesBundleForPolkadot,
+    });
   }
 
   /// READ methods
@@ -101,10 +43,13 @@ export default class CrustApi {
    * @returns unsubscribe signal
    * @throws ApiPromise error
    */
-  // FIXME: Restart chain will stop this subscriber
   async subscribeNewHeads(handler: (b: Header) => void) {
     // Waiting for API
-    await this.withApiReady();
+    while (!(await this.withApiReady())) {
+      logger.info('⛓  Connection broken, waiting for chain running.');
+      await sleep(6000); // IMPORTANT: Sequential matters(need give time for create ApiPromise)
+      this.initApi(); // Try to recreate api to connect running chain
+    }
 
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
@@ -211,8 +156,14 @@ export default class CrustApi {
   }
 
   // TODO: add more error handling here
-  private async withApiReady(): Promise<void> {
-    await this.api.isReadyOrError;
+  private async withApiReady(): Promise<boolean> {
+    try {
+      await this.api.isReadyOrError;
+      return true;
+    } catch (e) {
+      logger.error(`💥  Error connecting with Chain: ${e.toString()}`);
+      return false;
+    }
   }
 
   private parseFileInfo(ex: Extrinsic): FileInfo {

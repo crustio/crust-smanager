@@ -36,3 +36,9 @@ try {
 } catch (e) {
   logger.error(`💥  Caught unhandled error ${e.toString()}`);
 }
+
+process.on('uncaughtException', (err: Error) => {
+  logger.error(`☄️ [global] Uncaught exception ${err.message}`);
+  // eslint-disable-next-line no-process-exit
+  process.exit(1); // Restart by DevOps scripts
+});
