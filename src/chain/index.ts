@@ -135,6 +135,7 @@ export default class CrustApi {
           logger.error(`  ↪ 💥 Parse file error at block(${bh})`);
         }
       }
+      // Listen file status when `CalculateSuccess` and `IllegalFileClosed`
     }
 
     return files;
