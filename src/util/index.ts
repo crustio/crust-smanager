@@ -3,6 +3,8 @@ import BigNumber from 'bignumber.js';
 
 export const sleep = require('util').promisify(setTimeout);
 
+export * as consts from './consts';
+
 /**
  * Parse object into JSON object
  * @param o any object
@@ -48,4 +50,17 @@ export function addrToHostPort(addr: string): [string, string] {
  */
 export function getRandSec(seed: number): number {
   return Math.round((Math.random() * Date.now() + seed) % 60);
+}
+
+/**
+ * Reduce string letter to number
+ * @param s string
+ */
+export function lettersToNum(s: string): number {
+  let num = 0;
+  for (let i = 0; i < s.length; i++) {
+    num += s.charCodeAt(i);
+  }
+
+  return num;
 }
