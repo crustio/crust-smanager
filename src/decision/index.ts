@@ -445,7 +445,7 @@ export default class DecisionEngine {
    * @returns free space size
    */
   private async freeSpace(): Promise<BigNumber> {
-    const freeGBSize = 1000000; //await this.sworkerApi.free();
+    const freeGBSize = await this.sworkerApi.free();
     return gigaBytesToBytes(freeGBSize);
   }
 }

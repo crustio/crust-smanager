@@ -127,7 +127,6 @@ export default class CrustApi {
   }
 
   /**
-   * Trying to get new file orders by parsing block event
    * Trying to get new files/closed files by parsing block event
    * @param bh block hash
    * @returns Vec<FileInfo>
