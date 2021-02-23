@@ -10,6 +10,7 @@ export interface FileInfo {
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
+export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
   private readonly addr: string;
@@ -95,12 +96,29 @@ export default class CrustApi {
     return this.api.rpc.chain.getHeader();
   }
 
+  /**
+   * Get chain account
+   * @returns string
+   */
   getChainAccount() {
     return this.chainAccount;
   }
 
-  async sworkIdentity() {
+  /**
+   * Get sworker identity
+   * @returns Identity or Null
+   */
+  async sworkIdentity(): Promise<Identity> {
     return parseObj(await this.api.query.swork.identities(this.chainAccount));
+  }
+
+  /**
+   * Get group members
+   * @param groupOwner owner's account id
+   * @returns members(or empty vec)
+   */
+  async groupMembers(groupOwner: string): Promise<Array<string>> {
+    return parseObj(await this.api.query.swork.groups(groupOwner));
   }
 
   /**

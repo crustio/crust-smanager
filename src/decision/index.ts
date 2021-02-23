@@ -6,16 +6,15 @@ import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {getRandSec, gigaBytesToBytes, hexToString} from '../util';
+import {
+  getRandSec,
+  gigaBytesToBytes,
+  hexToString,
+  consts,
+  lettersToNum,
+} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-
-// The initial probability is 100‰
-const initialProbability = 1;
-// Current MAX replicas
-const maxFileReplicas = 70;
-// Base pin timeout
-const basePinTimeout = 5 * 60 * 1000; // 5 minutes
 
 interface Task extends BT {
   // The ipfs cid value
@@ -29,6 +28,8 @@ export default class DecisionEngine {
   private readonly ipfsApi: IpfsApi;
   private readonly sworkerApi: SworkerApi;
   private readonly nodeId: string;
+  private groupOwner: string | null;
+  private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
@@ -49,15 +50,24 @@ export default class DecisionEngine {
     this.nodeId = nodeId;
 
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
-    this.pullingQueue = new TaskQueue<Task>(50, 600);
-    this.sealingQueue = new TaskQueue<Task>(30, 600);
+    this.pullingQueue = new TaskQueue<Task>(
+      consts.MaxQueueLength,
+      consts.ExpiredQueueBlocks
+    );
+    this.sealingQueue = new TaskQueue<Task>(
+      consts.MaxQueueLength,
+      consts.ExpiredQueueBlocks
+    );
 
     // Init the current block number
-    // TODO: Do the restart mechanism
     this.currentBn = 0;
 
     // Task locker to make sure there's only 1 task
     this.locker = new Map<string, boolean>();
+
+    // Groups
+    this.groupOwner = null;
+    this.members = new Array<string>();
   }
 
   /**
@@ -84,7 +94,7 @@ export default class DecisionEngine {
       this.currentBn = bn;
 
       // 4. If the node identity is member, wait for it to join group
-      if (this.nodeId === 'member') {
+      if (this.nodeId === consts.MEMBER) {
         const sworkIdentity = await this.crustApi.sworkIdentity();
         if (!sworkIdentity) {
           logger.warn(
@@ -92,14 +102,22 @@ export default class DecisionEngine {
           );
           return;
         } else {
-          const group = sworkIdentity.group;
-          if (!group) {
+          const groupOwner = sworkIdentity.group;
+          if (!groupOwner) {
             logger.warn('⚠️  Wait for the member to join group');
             return;
-          } else if (this.crustApi.getChainAccount() === group) {
+          } else if (this.crustApi.getChainAccount() === groupOwner) {
             logger.error("💥  Can't use owner account to configure member");
             return;
           }
+
+          // Assign this member node's owner
+          this.groupOwner = groupOwner;
+
+          // Get group members
+          this.members = await this.crustApi.groupMembers(groupOwner);
+          // and sort by alphabetic
+          this.members.sort();
         }
       }
 
@@ -113,6 +131,14 @@ export default class DecisionEngine {
           bn: bn,
           size: newFile.size,
         };
+
+        if (nt.cid.length !== 46 || nt.cid.substr(0, 2) !== 'Qm') {
+          logger.info(
+            `  ↪ ✨  Found illegal file, ignore it ${JSON.stringify(nt)}`
+          );
+          continue;
+        }
+
         logger.info(
           `  ↪ ✨  Found new file, adding it to pulling queue ${JSON.stringify(
             nt
@@ -151,41 +177,46 @@ export default class DecisionEngine {
 
       // 1. Loop old pulling tasks
       for (const pt of oldPts) {
-        // 2. If join pullings and start puling in ipfs, otherwise push back to pulling tasks
+        // 2. If join pullings and start puling in ipfs
         if (await this.pickUpPulling(pt)) {
-          logger.info(
-            `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
-          );
+          // 3. Judge if it shoot it by chance, otherwise push back to pulling queue
+          if (await this.hitTheChance(pt.bn)) {
+            logger.info(
+              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
+                pt
+              )}, pulling from ipfs`
+            );
 
-          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
-          // (baseSpeedReference: 100kB/s)
-          const to = basePinTimeout + (pt.size / 1024 / 100) * 1000;
+            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
+            // (baseSpeedReference: 100kB/s)
+            const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
 
-          // Async pulling
-          await this.ipfsApi
-            .pin(pt.cid, to)
-            .then(pinRst => {
-              if (!pinRst) {
-                // a. Pass it with error
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-              } else {
-                // b. Pin successfully, add into sealing queue
-                logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-                this.sealingQueue.push(pt);
-              }
-            })
-            .catch(err => {
-              // c. Just drop it as 💩
-              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-            });
-        } else {
-          // d. Push back to pulling queue
-          failedPts.push(pt);
+            // Async pulling
+            await this.ipfsApi
+              .pin(pt.cid, to)
+              .then(pinRst => {
+                if (!pinRst) {
+                  // a. Pass it with error
+                  logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
+                } else {
+                  // b. Pin successfully, add into sealing queue
+                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                  this.sealingQueue.push(pt);
+                }
+              })
+              .catch(err => {
+                // c. Just drop it as 💩
+                logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+              });
+          } else {
+            // d. Push back to pulling queue
+            failedPts.push(pt);
+          }
         }
-      }
 
-      // Push back failed tasks
-      this.pullingQueue.tasks.concat(failedPts);
+        // Push back failed tasks
+        this.pullingQueue.tasks.concat(failedPts);
+      }
     });
   }
 
@@ -272,8 +303,8 @@ export default class DecisionEngine {
         return false;
       }
 
-      // 3. Judge if it already been taked on chain or shoot it by chance
-      return this.shouldPull(t.cid, t.bn);
+      // 3. Judge if it should pull from chain-side
+      return await this.shouldPull(t.cid);
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
@@ -297,6 +328,51 @@ export default class DecisionEngine {
   }
 
   /**
+   * Should pull decided from chain-side:
+   * 1. Replica is full
+   * 2. Group duplication
+   * @param cid File hash
+   * @returns pull it or not
+   */
+  private async shouldPull(cid: string): Promise<boolean> {
+    // If replicas already reach the limit or file not exist
+    if (await this.isReplicaFullOrFileNotExist(cid)) {
+      return false;
+    }
+
+    // Whether this guy is member and its his turn to pick file
+    if (!(await this.isMyTurn(cid))) {
+      logger.info('  ↪  🙅  Not my turn, just passed.');
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Query the given cid is already been picked plus a certain
+   * probability
+   * @param bn task block number
+   * @returns should pull from ipfs
+   * @throws crustApi error
+   */
+  private async hitTheChance(bn: number): Promise<boolean> {
+    // Calculate the probability with `expired_date`
+    // 1. Generate a number between 0 and 1
+    const randNum = Math.random();
+
+    // 2. Calculate probability
+    const multiple = (this.currentBn - bn) / 1 + 1; // 1 unit means 1min
+    const probability = consts.InitialProbability * multiple; // probability will turns into 100% after 30 * 1 unit = 30min
+    logger.info(
+      `💓  Current randNum is ${randNum}, New target is ${probability}, Current block is ${this.currentBn}, Task block is ${bn}`
+    );
+
+    // 3. Judge if we hit the spot
+    return randNum < probability;
+  }
+
+  /**
    * Judge if replica on chain is full or file on chain is exist
    * @param cid ipfs cid value
    * @returns wether file not exist or replica is full
@@ -309,7 +385,7 @@ export default class DecisionEngine {
 
     logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
 
-    if (usedInfo && _.size(usedInfo.groups) > maxFileReplicas) {
+    if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
         `  ↪ ⚠️  File replica already full with ${usedInfo.groups.length}`
       );
@@ -324,32 +400,32 @@ export default class DecisionEngine {
   }
 
   /**
-   * Query the given cid is already been picked plus a certain
-   * probability
-   * @param cid ipfs cid value
-   * @param bn task block number
-   * @returns should pull from ipfs
-   * @throws crustApi error
+   * Judge if is member can pick the file
+   * @param cid File hash
+   * @returns Whether is my turn to pickup file
    */
-  private async shouldPull(cid: string, bn: number): Promise<boolean> {
-    // If replicas already reach the limit or file not exist
-    if (await this.isReplicaFullOrFileNotExist(cid)) {
-      return false;
+  private async isMyTurn(cid: string): Promise<boolean> {
+    // Member but without groupOwner is freaking strange, but anyway pass with true
+    if (
+      this.nodeId === consts.MEMBER &&
+      this.groupOwner &&
+      this.members.length > 0
+    ) {
+      // 1. Get group length
+      const len = this.members.length;
+      // 2. Get my index
+      const myIdx = this.members.indexOf(this.crustApi.getChainAccount());
+      // 3. Judge if should pick storage order
+      if (myIdx !== -1) {
+        const cidNum = lettersToNum(cid);
+        logger.info(
+          `  ↪  🙋  Group length: ${len}, member index: ${myIdx}, file cid: ${cid}(${cidNum})`
+        );
+        return cidNum % len === myIdx;
+      }
     }
-    // Else, calculate the probability with `expired_date`
 
-    // 1. Generate a number between 0 and 1
-    const randNum = Math.random();
-
-    // 2. Calculate probability
-    const multiple = (this.currentBn - bn) / 1 + 1; // 1 unit means 1min
-    const probability = initialProbability * multiple; // probability will turns into 100% after 30 * 1 unit = 30min
-    logger.info(
-      `💓  Current randNum is ${randNum}, New target is ${probability}, Current block is ${this.currentBn}, Task block is ${bn}`
-    );
-
-    // 3. Judge if we hit the spot
-    return randNum < probability;
+    return true;
   }
 
   /**
