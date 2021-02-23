@@ -122,12 +122,15 @@ export default class DecisionEngine {
       }
 
       // 5. Try to get new files
-      const newFiles: FileInfo[] = await this.crustApi.parseNewFilesByBlock(bh);
+      const [newFiles, closedFiles]: [
+        FileInfo[],
+        string[]
+      ] = await this.crustApi.parseNewFilesAndClosedFilesByBlock(bh);
 
       // 6. If got new files, parse and push into pulling queue
       for (const newFile of newFiles) {
         const nt: Task = {
-          cid: hexToString(newFile.cid),
+          cid: newFile.cid,
           bn: bn,
           size: newFile.size,
         };
@@ -148,7 +151,16 @@ export default class DecisionEngine {
         this.pullingQueue.push(nt);
       }
 
-      // 7. Check and clean outdated tasks
+      // 7. If got closed files, try to delete it by calling sWorker
+      for (const closedFileCid of closedFiles) {
+        logger.info(`  ↪ 🗑  Try to delete file ${closedFileCid} from sWorker`);
+        const deleted = await this.sworkerApi.delete(closedFileCid);
+        if (deleted) {
+          logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
+        }
+      }
+
+      // 8. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
       this.sealingQueue.clear(bn);
     };

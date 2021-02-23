@@ -68,15 +68,20 @@ export default class SworkerApi {
    * @throws sWorker api error | timeout
    */
   async free(): Promise<number> {
-    const res = await this.sworker.get('/workload');
+    try {
+      const res = await this.sworker.get('/workload');
 
-    if (res && res.status === 200) {
-      const body = parseObj(res.data);
-      return (
-        Number(body.srd['srd_complete']) + Number(body.srd['disk_available'])
-      );
+      if (res && res.status === 200) {
+        const body = parseObj(res.data);
+        return (
+          Number(body.srd['srd_complete']) + Number(body.srd['disk_available'])
+        );
+      }
+
+      return 0;
+    } catch (e) {
+      logger.error(`Get free space from sWorker failed: ${e}`);
+      return 0;
     }
-
-    return 0;
   }
 }

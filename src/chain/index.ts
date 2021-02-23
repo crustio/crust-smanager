@@ -2,7 +2,7 @@
 import {ApiPromise, WsProvider} from '@polkadot/api';
 import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
-import {parseObj, sleep} from '../util';
+import {hexToString, parseObj, sleep} from '../util';
 import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
 export interface FileInfo {
   cid: string;
@@ -118,44 +118,67 @@ export default class CrustApi {
    * @returns members(or empty vec)
    */
   async groupMembers(groupOwner: string): Promise<Array<string>> {
-    return parseObj(await this.api.query.swork.groups(groupOwner));
+    try {
+      return parseObj(await this.api.query.swork.groups(groupOwner));
+    } catch (e) {
+      logger.error(`Get group member error: ${e}`);
+      return [];
+    }
   }
 
   /**
-   * Trying to get new file orders by parsing block event
+   * Trying to get new files/closed files by parsing block event
    * @param bh block hash
    * @returns Vec<FileInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async parseNewFilesByBlock(bh: string): Promise<FileInfo[]> {
+  async parseNewFilesAndClosedFilesByBlock(
+    bh: string
+  ): Promise<[FileInfo[], string[]]> {
     await this.withApiReady();
-    const block = await this.api.rpc.chain.getBlock(bh);
-    const exs: Extrinsic[] = block.block.extrinsics;
-    const ers: EventRecord[] = await this.api.query.system.events.at(bh);
-    const files: FileInfo[] = [];
+    try {
+      const block = await this.api.rpc.chain.getBlock(bh);
+      const exs: Extrinsic[] = block.block.extrinsics;
+      const ers: EventRecord[] = await this.api.query.system.events.at(bh);
+      const newFiles: FileInfo[] = [];
+      const closedFiles: string[] = [];
 
-    for (const {
-      event: {data, method},
-      phase,
-    } of ers) {
-      if (method === 'FileSuccess') {
-        if (data.length < 2) continue; // data should be like [AccountId, FileInfo]
+      for (const {
+        event: {data, method},
+        phase,
+      } of ers) {
+        if (method === 'FileSuccess') {
+          if (data.length < 2) continue; // data should be like [AccountId, MerkleRoot]
 
-        // Find new successful file order from extrinsincs
-        // a. Get reportWorks extrinsics
-        const exIdx = phase.asApplyExtrinsic.toNumber();
-        const ex = exs[exIdx];
+          // Find new successful file order from extrinsincs
+          // a. Get reportWorks extrinsics
+          const exIdx = phase.asApplyExtrinsic.toNumber();
+          const ex = exs[exIdx];
 
-        // b. Parse new file, continue with parsing error
-        try {
-          files.push(this.parseFileInfo(ex));
-        } catch (err) {
-          logger.error(`  ↪ 💥 Parse file error at block(${bh})`);
+          // b. Parse new file, continue with parsing error
+          newFiles.push(this.parseFileInfo(ex));
+        } else if (method === 'CalculateSuccess') {
+          if (data.length !== 1) continue; // data should be like [MerkleRoot]
+
+          const cid = hexToString(data[0].toString());
+          const isClosed = (await this.maybeGetFileUsedInfo(cid)) === null;
+          if (isClosed) {
+            closedFiles.push(cid);
+          }
+        } else if (method === 'IllegalFileClosed') {
+          if (data.length !== 1) continue; // data should be like [MerkleRoot]
+
+          // Add into closed files
+          const cid = hexToString(data[0].toString());
+          closedFiles.push(cid);
         }
       }
-    }
 
-    return files;
+      return [newFiles, closedFiles];
+    } catch (err) {
+      logger.error(`  ↪ 💥 Parse files error at block(${bh}): ${err}`);
+      return [[], []];
+    }
   }
 
   /**
@@ -167,10 +190,14 @@ export default class CrustApi {
   async maybeGetFileUsedInfo(cid: string): Promise<UsedInfo | null> {
     await this.withApiReady();
 
-    const [_fileInfo, usedInfo] = parseObj(
-      await this.api.query.market.files(cid)
-    );
-    return usedInfo;
+    try {
+      // Should be like [fileInfo, usedInfo] or null
+      const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
+      return fileUsedInfo ? fileUsedInfo[1] : null;
+    } catch (e) {
+      logger.error(`Get file/used info error: ${e}`);
+      return null;
+    }
   }
 
   // TODO: add more error handling here
@@ -187,7 +214,7 @@ export default class CrustApi {
   private parseFileInfo(ex: Extrinsic): FileInfo {
     const exData = parseObj(ex.method).args;
     return {
-      cid: exData.cid,
+      cid: hexToString(exData.cid),
       size: exData.reported_file_size,
     };
   }

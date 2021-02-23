@@ -21,7 +21,7 @@ export default class IpfsApi {
    * Pin add file by a given cid asyncly
    * @param c ipfs cid value
    * @param to timeout for pin operation
-   * @throws illegal cid | timeout
+   * @throws illegal cid | timeout | IPFS access error, handled outside(use it as async way)
    */
   async pin(c: string, to: number): Promise<boolean> {
     const cid = new CID(c);
@@ -30,6 +30,7 @@ export default class IpfsApi {
   }
 
   /**
+   * NO USE
    * Pin remove file by a given cid
    * @param c ipfs cid value
    * @throws illegal cid | unpinned `c` | timeout
@@ -42,6 +43,7 @@ export default class IpfsApi {
 
   /// READONLY methods
   /**
+   * NO USE
    * Get file size by a given cid
    * @param cid ipfs cid value
    * @returns file size (bytes)
@@ -53,6 +55,7 @@ export default class IpfsApi {
   }
 
   /**
+   * NO USE
    * Query if a given cid(recursive type) exist
    * @param c ipfs cid value
    * @throws illegal cid | timeout
@@ -69,6 +72,7 @@ export default class IpfsApi {
   }
 
   /**
+   * NO USE
    * @returns ipfs remaining storage
    * @throws timeout
    */
