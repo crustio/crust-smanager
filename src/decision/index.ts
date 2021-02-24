@@ -6,14 +6,8 @@ import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {
-  getRandSec,
-  gigaBytesToBytes,
-  hexToString,
-  consts,
-  lettersToNum,
-} from '../util';
-import SworkerApi from '../sworker';
+import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
+import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
 
 interface Task extends BT {
@@ -267,9 +261,13 @@ export default class DecisionEngine {
             `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
           );
 
-          if (await this.sworkerApi.seal(st.cid)) {
+          const sealRes: SealRes = await this.sworkerApi.seal(st.cid);
+
+          if (sealRes === SealRes.SealSuccess) {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
-            continue; // Continue with next sealing task
+          } else if (sealRes === SealRes.SealUnavailable) {
+            logger.info(`  ↪ 💖  Seal ${st.cid} unavailable`);
+            this.sealingQueue.push(st); // Push back to sealing queue
           } else {
             logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
           }

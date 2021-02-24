@@ -3,6 +3,12 @@ import {logger} from '../log';
 import {parseObj} from '../util';
 import {inspect} from 'util';
 
+export enum SealRes {
+  SealSuccess,
+  SealUnavailable,
+  SealFailed,
+}
+
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
 
@@ -21,19 +27,30 @@ export default class SworkerApi {
    * @returns seal success or failed
    * @throws sWorker api error | timeout
    */
-  async seal(cid: string): Promise<boolean> {
+  async seal(cid: string): Promise<SealRes> {
     try {
       const res = await this.sworker.post(
         '/storage/seal',
         JSON.stringify({cid: cid})
       );
 
-      logger.info(`  ↪ 💖  Call sWorker seal, response: ${inspect(res.data)}`);
+      const sealRes = parseObj(res.data);
 
-      return res.status === 200;
+      logger.info(
+        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(sealRes)}`
+      );
+
+      if (res.status === 200) {
+        return SealRes.SealSuccess;
+      } else {
+        if (sealRes['status_code'] === 8014) {
+          return SealRes.SealUnavailable;
+        }
+        return SealRes.SealFailed;
+      }
     } catch (e) {
       logger.error(`Sealing file ${cid} timeout or error: ${e.toString()}`);
-      return false;
+      return SealRes.SealFailed;
     }
   }
 
