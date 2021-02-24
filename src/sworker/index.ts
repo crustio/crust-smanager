@@ -43,7 +43,7 @@ export default class SworkerApi {
       if (res.status === 200) {
         return SealRes.SealSuccess;
       } else {
-        if (sealRes['status_code'] === 32788) {
+        if (sealRes['status_code'] === 8012) {
           return SealRes.SealUnavailable;
         }
         return SealRes.SealFailed;
