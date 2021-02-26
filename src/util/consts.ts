@@ -4,7 +4,7 @@ export const InitialProbability = 1;
 // Current MAX file replicas
 export const MaxFileReplicas = 70;
 // Base pin timeout
-export const BasePinTimeout = 5 * 60 * 1000; // 5 minutes
+export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
 // Pulling/Sealinng Queue
 export const MaxQueueLength = 50;
