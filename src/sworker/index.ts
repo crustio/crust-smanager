@@ -34,21 +34,24 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      const sealRes = parseObj(res.data);
-
       logger.info(
-        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(sealRes)}`
+        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(res.data)}`
       );
 
       if (res.status === 200) {
         return SealRes.SealSuccess;
       } else {
-        if (sealRes['status_code'] === 8014) {
-          return SealRes.SealUnavailable;
-        }
         return SealRes.SealFailed;
       }
     } catch (e) {
+      // Axios error
+      if (e.response) {
+        const sealRes = e.response.data;
+        if (sealRes && sealRes['status_code'] === 8014) {
+          return SealRes.SealUnavailable;
+        }
+      }
+
       logger.error(`Sealing file ${cid} timeout or error: ${e.toString()}`);
       return SealRes.SealFailed;
     }
