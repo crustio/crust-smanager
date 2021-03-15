@@ -1,6 +1,6 @@
 // Decision
 // Current MAX file replicas
-export const MaxFileReplicas = 70;
+export const MaxFileReplicas = 200;
 // Base pin timeout
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
