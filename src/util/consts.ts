@@ -2,7 +2,7 @@
 // The initial probability is 100‰
 export const InitialProbability = 1;
 // Current MAX file replicas
-export const MaxFileReplicas = 70;
+export const MaxFileReplicas = 200;
 // Base pin timeout
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
