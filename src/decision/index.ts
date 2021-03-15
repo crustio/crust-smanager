@@ -9,7 +9,7 @@ import {logger} from '../log';
 import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
 import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
-import { MaxQueueLength } from '../util/consts';
+import {MaxQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
