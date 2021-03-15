@@ -9,6 +9,7 @@ import {logger} from '../log';
 import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
 import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
+import {MaxQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -179,45 +180,41 @@ export default class DecisionEngine {
       this.pullingQueue.tasks = [];
 
       logger.info('⏳  Checking pulling queue ...');
-      logger.info(`  ↪ 📨  Pulling queue length: ${oldPts.length}`);
+      logger.info(
+        `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+      );
 
       // 1. Loop old pulling tasks
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs
         if (await this.pickUpPulling(pt)) {
-          // 3. Judge if it shoot it by chance, otherwise push back to pulling queue
-          if (await this.hitTheChance(pt.bn)) {
-            logger.info(
-              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
-                pt
-              )}, pulling from ipfs`
-            );
+          logger.info(
+            `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
+          );
 
-            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
-            // (baseSpeedReference: 100kB/s)
-            const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
+          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
+          // (baseSpeedReference: 100kB/s)
+          const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
 
-            // Async pulling
-            await this.ipfsApi
-              .pin(pt.cid, to)
-              .then(pinRst => {
-                if (!pinRst) {
-                  // a. Pass it with error
-                  logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-                } else {
-                  // b. Pin successfully, add into sealing queue
-                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-                  this.sealingQueue.push(pt);
-                }
-              })
-              .catch(err => {
-                // c. Just drop it as 💩
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-              });
-          } else {
-            // d. Push back to pulling queue
-            failedPts.push(pt);
-          }
+          // Async pulling
+          await this.ipfsApi
+            .pin(pt.cid, to)
+            .then(pinRst => {
+              if (!pinRst) {
+                // a. Pin error with
+                logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
+                failedPts.push(pt);
+              } else {
+                // b. Pin successfully, add into sealing queue
+                logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                this.sealingQueue.push(pt);
+              }
+            })
+            .catch(err => {
+              // c. Just drop it as 💩
+              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+              failedPts.push(pt);
+            });
         }
 
         // Push back failed tasks
@@ -239,7 +236,9 @@ export default class DecisionEngine {
       const oldSts: Task[] = this.sealingQueue.tasks;
 
       logger.info('⏳  Checking sealing queue...');
-      logger.info(`  ↪ 💌  Sealing queue length: ${oldSts.length}`);
+      logger.info(
+        `  ↪ 💌  Sealing queue length: ${oldSts.length}/${MaxQueueLength}`
+      );
 
       // 0. If sWorker locked
       if (this.locker.get('sworker')) {
@@ -357,29 +356,6 @@ export default class DecisionEngine {
     }
 
     return true;
-  }
-
-  /**
-   * Query the given cid is already been picked plus a certain
-   * probability
-   * @param bn task block number
-   * @returns should pull from ipfs
-   * @throws crustApi error
-   */
-  private async hitTheChance(bn: number): Promise<boolean> {
-    // Calculate the probability with `expired_date`
-    // 1. Generate a number between 0 and 1
-    const randNum = Math.random();
-
-    // 2. Calculate probability
-    const multiple = (this.currentBn - bn) / 1 + 1; // 1 unit means 1min
-    const probability = consts.InitialProbability * multiple; // probability will turns into 100% after 30 * 1 unit = 30min
-    logger.info(
-      `💓  Current randNum is ${randNum}, New target is ${probability}, Current block is ${this.currentBn}, Task block is ${bn}`
-    );
-
-    // 3. Judge if we hit the spot
-    return randNum < probability;
   }
 
   /**
