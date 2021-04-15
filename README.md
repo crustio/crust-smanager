@@ -42,7 +42,7 @@ yarn debug $CHAIN_ADDR $IPFS_ADDR $SWORKER_ADDR $NODEID $CHAIN_ACCOUNT
 
 The overall sManager working flow shows like the following diagram.
 
-![smanager-flow](assets/build/smanager-flow.png)
+![smanager-flow](docs/img/smanager-flow.png)
 
 It divided into 3 processes. Generally, it picking file from chain, pulling file from IPFS and sealing file with sWorker.
 
