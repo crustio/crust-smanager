@@ -7,7 +7,7 @@ import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
 import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
-import SworkerApi, {SealRes} from '../sworker';
+import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
 import {MaxQueueLength} from '../util/consts';
 
@@ -27,7 +27,6 @@ export default class DecisionEngine {
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
-  private sealingQueue: TaskQueue<Task>;
   private currentBn: number;
 
   constructor(
@@ -44,12 +43,8 @@ export default class DecisionEngine {
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
 
-    // MaxQueueLength is 50 and Expired with 600 blocks(1h)
+    // MaxQueueLength is 50 and Expired with 1200 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
-      consts.MaxQueueLength,
-      consts.ExpiredQueueBlocks
-    );
-    this.sealingQueue = new TaskQueue<Task>(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
     );
@@ -157,7 +152,6 @@ export default class DecisionEngine {
 
       // 8. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
-      this.sealingQueue.clear(bn);
     };
 
     return await this.crustApi.subscribeNewHeads(addPullings);
@@ -165,7 +159,7 @@ export default class DecisionEngine {
 
   /**
    * Subscribe new ipfs pin add task, scheduling by cron.ScheduledTask
-   * Take pulling task from pull queue, (maybe) adding into sealing queue
+   * Take pulling task from pull queue
    * @returns stop `ipfs pinning add`
    * @throws ipfsApi error
    */
@@ -184,10 +178,10 @@ export default class DecisionEngine {
         `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
       );
 
-      // 1. Loop old pulling tasks
+      // 1. Loop pulling tasks
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs
-        if (await this.pickUpPulling(pt)) {
+        if (await this.shouldPull(pt)) {
           logger.info(
             `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
           );
@@ -197,6 +191,7 @@ export default class DecisionEngine {
           const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
 
           // Async pulling
+          // TODO: add thread limitation
           await this.ipfsApi
             .pin(pt.cid, to)
             .then(pinRst => {
@@ -205,9 +200,8 @@ export default class DecisionEngine {
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
                 failedPts.push(pt);
               } else {
-                // b. Pin successfully, add into sealing queue
+                // b. Pin successfully
                 logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-                this.sealingQueue.push(pt);
               }
             })
             .catch(err => {
@@ -223,61 +217,6 @@ export default class DecisionEngine {
     });
   }
 
-  /**
-   * Subscribe new sWorker seal task, scheduling by cron.ScheduledTask
-   * Take sealing task from sealing queue, notify sWorker do the sealing job
-   * @returns stop `sWorker sealing`
-   * @throws sWorkerApi error
-   */
-  async subscribeSealings(): Promise<cron.ScheduledTask> {
-    const randSec = getRandSec(50);
-    // Call sWorker sealing every ${randSec}
-    return cron.schedule(`${randSec} * * * * *`, async () => {
-      const oldSts: Task[] = this.sealingQueue.tasks;
-
-      logger.info('⏳  Checking sealing queue...');
-      logger.info(
-        `  ↪ 💌  Sealing queue length: ${oldSts.length}/${MaxQueueLength}`
-      );
-
-      // 0. If sWorker locked
-      if (this.locker.get('sworker')) {
-        logger.warn('  ↪ 💌  Already has sealing task in sWorker');
-        return;
-      }
-
-      // 1. Clear sealing queue
-      this.sealingQueue.tasks = [];
-
-      // 2. Lock sWorker
-      this.locker.set('sworker', true);
-
-      // 3. Loop all old sealing tasks
-      for (const st of oldSts) {
-        // 4. Judge if sealing successful, otherwise push back to sealing tasks
-        if (await this.pickUpSealing(st)) {
-          logger.info(
-            `  ↪ 🗳  Pick sealing task ${JSON.stringify(st)}, sending to sWorker`
-          );
-
-          const sealRes: SealRes = await this.sworkerApi.seal(st.cid);
-
-          if (sealRes === SealRes.SealSuccess) {
-            logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
-          } else if (sealRes === SealRes.SealUnavailable) {
-            logger.info(`  ↪ 💖  Seal ${st.cid} unavailable`);
-            this.sealingQueue.push(st); // Push back to sealing queue
-          } else {
-            logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
-          }
-        }
-      }
-
-      // 5. Unlock sWorker
-      this.locker.set('sworker', false);
-    });
-  }
-
   /// CUSTOMIZE STRATEGY
   /// we only give the default pickup strategies here, including:
   /// 1. random add storage orders;
@@ -287,8 +226,7 @@ export default class DecisionEngine {
    * @param t Task
    * @returns if can pick
    */
-  // TODO: add pulling pick up strategy here, basically random with pks?
-  private async pickUpPulling(t: Task): Promise<boolean> {
+  private async shouldPull(t: Task): Promise<boolean> {
     try {
       // 1. Get and judge file size is match
       // TODO: Ideally, we should compare the REAL file size(from ipfs) and
@@ -305,57 +243,37 @@ export default class DecisionEngine {
       const size = t.size;
 
       // 2. Get and judge repo can take it, make sure the free can take double file
-      const free = await this.freeSpace();
+      const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2)) {
         logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
         return false;
+      } else if (sysFree < consts.SysMinFreeSpace) {
+        logger.warn(
+          `  ↪ ⚠️  System free space not enough ${sysFree} < ${consts.SysMinFreeSpace}`
+        );
+        return false;
       }
 
-      // 3. Judge if it should pull from chain-side
-      return await this.shouldPull(t.cid);
+      // 3. Judge if it should pull from chain-side based on:
+      // * 1. Replica is full
+      // * 2. Group duplication
+      // If replicas already reach the limit or file not exist
+      if (await this.isReplicaFullOrFileNotExist(t.cid)) {
+        return false;
+      }
+
+      // Whether this guy is member and its his turn to pick file
+      if (!(await this.isMyTurn(t.cid))) {
+        logger.info('  ↪  🙅  Not my turn, just passed.');
+        return false;
+      }
+
+      return true;
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
-  }
-
-  /**
-   * Pick or drop sealing queue by a given cid
-   * @param t Task
-   */
-  private async pickUpSealing(t: Task): Promise<boolean> {
-    const free = await this.freeSpace();
-
-    // If free < file size
-    if (free.lt(t.size)) {
-      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}`);
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Should pull decided from chain-side:
-   * 1. Replica is full
-   * 2. Group duplication
-   * @param cid File hash
-   * @returns pull it or not
-   */
-  private async shouldPull(cid: string): Promise<boolean> {
-    // If replicas already reach the limit or file not exist
-    if (await this.isReplicaFullOrFileNotExist(cid)) {
-      return false;
-    }
-
-    // Whether this guy is member and its his turn to pick file
-    if (!(await this.isMyTurn(cid))) {
-      logger.info('  ↪  🙅  Not my turn, just passed.');
-      return false;
-    }
-
-    return true;
   }
 
   /**
@@ -416,10 +334,10 @@ export default class DecisionEngine {
 
   /**
    * Got free space size from sWorker
-   * @returns free space size
+   * @returns [free space size(Byte), system free space size(GB)]
    */
-  private async freeSpace(): Promise<BigNumber> {
-    const freeGBSize = await this.sworkerApi.free();
-    return gigaBytesToBytes(freeGBSize);
+  private async freeSpace(): Promise<[BigNumber, number]> {
+    const [freeGBSize, sysFreeGBSize] = await this.sworkerApi.free();
+    return [gigaBytesToBytes(freeGBSize), sysFreeGBSize];
   }
 }

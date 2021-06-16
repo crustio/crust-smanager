@@ -3,12 +3,6 @@ import {logger} from '../log';
 import {parseObj} from '../util';
 import {inspect} from 'util';
 
-export enum SealRes {
-  SealSuccess,
-  SealUnavailable,
-  SealFailed,
-}
-
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
 
@@ -22,43 +16,7 @@ export default class SworkerApi {
 
   /// WRITE methods
   /**
-   * Seal cid
-   * @param cid ipfs cid
-   * @returns seal success or failed
-   * @throws sWorker api error | timeout
-   */
-  async seal(cid: string): Promise<SealRes> {
-    try {
-      const res = await this.sworker.post(
-        '/storage/seal',
-        JSON.stringify({cid: cid})
-      );
-
-      logger.info(
-        `  ↪ 💖  Call sWorker seal, response: ${JSON.stringify(res.data)}`
-      );
-
-      if (res.status === 200) {
-        return SealRes.SealSuccess;
-      } else {
-        return SealRes.SealFailed;
-      }
-    } catch (e) {
-      // Axios error
-      if (e.response) {
-        const sealRes = e.response.data;
-        if (sealRes && sealRes['status_code'] === 8014) {
-          return SealRes.SealUnavailable;
-        }
-      }
-
-      logger.error(`Sealing file ${cid} timeout or error: ${e.toString()}`);
-      return SealRes.SealFailed;
-    }
-  }
-
-  /**
-   * Delete both origin and sealed file by cid
+   * Delete file by cid
    * @param cid ipfs cid
    * @returns delete success or failed
    * @throws sWorker api error | timeout
@@ -84,24 +42,25 @@ export default class SworkerApi {
   /// READ methods
   /**
    * Query local free storage size
-   * @returns free space size(GB)
+   * @returns (free space size(GB), system free space(GB))
    * @throws sWorker api error | timeout
    */
-  async free(): Promise<number> {
+  async free(): Promise<[number, number]> {
     try {
       const res = await this.sworker.get('/workload');
 
       if (res && res.status === 200) {
         const body = parseObj(res.data);
-        return (
-          Number(body.srd['srd_complete']) + Number(body.srd['disk_available'])
-        );
+        return [
+          Number(body.srd['srd_complete']) + Number(body.srd['disk_available']),
+          Number(body.srd['sys_disk_available']),
+        ];
       }
 
-      return 0;
+      return [0, 0];
     } catch (e) {
       logger.error(`Get free space from sWorker failed: ${e}`);
-      return 0;
+      return [0, 0];
     }
   }
 }
