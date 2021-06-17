@@ -6,7 +6,7 @@ import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
+import {rdm, getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
 import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
 import {MaxQueueLength} from '../util/consts';
@@ -24,6 +24,8 @@ export default class DecisionEngine {
   private readonly sworkerApi: SworkerApi;
   private readonly nodeId: string;
   private groupOwner: string | null;
+  private chainAccount: string;
+  private allNodeCount: number;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
@@ -43,6 +45,8 @@ export default class DecisionEngine {
     this.ipfsApi = new IpfsApi(ipfsAddr, ito);
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
+    this.chainAccount = chainAccount;
+    this.allNodeCount = 0;
 
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
@@ -85,8 +89,9 @@ export default class DecisionEngine {
 
       logger.info(`⛓  Got new block ${bn}(${bh})`);
 
-      // 3. Update current block number
+      // 3. Update current block number and information
       this.currentBn = bn;
+      this.allNodeCount = await this.crustApi.getAllNodeCount();
 
       // 4. If the node identity is member, wait for it to join group
       if (this.nodeId === consts.MEMBER) {
@@ -349,7 +354,13 @@ export default class DecisionEngine {
       return false;
     }
 
-    // Whether this guy is member and its his turn to pick file
+    // Probability filtering
+    if (!(await this.probabilityFilter())) {
+      logger.info('  ↪  🙅  Probability filter works, just passed.');
+      return false;
+    }
+
+    // Whether is my turn to pickup file
     if (!(await this.isMyTurn(cid))) {
       logger.info('  ↪  🙅  Not my turn, just passed.');
       return false;
@@ -386,7 +397,36 @@ export default class DecisionEngine {
   }
 
   /**
-   * Judge if is member can pick the file
+   * Probability filtering
+   * @returns Whether is to pickup file
+   */
+  private async probabilityFilter(): Promise<boolean> {
+    // Base probability
+    var pTake = 0.0
+    if (this.allNodeCount == 0) {
+      pTake = 0.0;
+    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
+      pTake = 60.0/this.allNodeCount
+    } else if (this.allNodeCount > 2400 && this.allNodeCount <= 8000) {
+      pTake = 0.025
+    } else {
+      pTake = 200/this.allNodeCount;
+    }
+
+    if (
+      this.nodeId === consts.MEMBER &&
+      this.groupOwner &&
+      this.members.length > 0
+    ) {
+      pTake = pTake * this.members.length
+    }
+
+    return pTake > rdm(this.chainAccount)
+  }
+
+
+  /**
+   * Judge if is node can pick the file
    * @param cid File hash
    * @returns Whether is my turn to pickup file
    */

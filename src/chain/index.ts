@@ -4,6 +4,9 @@ import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
 import {logger} from '../log';
 import {hexToString, parseObj, sleep} from '../util';
 import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
+import _ from 'lodash';
+import {SLOT_LENGTH} from '../util/consts';
+
 export interface FileInfo {
   cid: string;
   size: number;
@@ -110,6 +113,50 @@ export default class CrustApi {
    */
   async sworkIdentity(): Promise<Identity> {
     return parseObj(await this.api.query.swork.identities(this.chainAccount));
+  }
+
+  /**
+   * Get all validators count
+   * @returns Count
+   */
+   async validatorsCount(): Promise<number> {
+    const vs = await this.api.query.staking.validators.entries();
+    return vs.length;
+  }
+
+  /**
+   * Get all work reports
+   * @returns The array of work report
+   */
+  async workReportsAll() {
+    return parseObj(await this.api.query.swork.workReports.entries());
+  }
+
+  /**
+   * Get current report slot
+   * @returns Current report slot
+   */
+  async currentReportSlot() {
+    return parseObj(await this.api.query.swork.currentReportSlot());
+  }
+
+  /**
+   * Get all node count
+   * @returns All node count
+   */
+  async getAllNodeCount(): Promise<number> {
+    const currentSlot = await this.currentReportSlot();
+    const workReports = await this.workReportsAll();
+    let validReports = [];
+    if (_.isArray(workReports)) {
+        const realReports = _.map(workReports, (e) => {
+            return e[1];
+        });
+        validReports = _.filter(realReports, (e) => {
+            return e.report_slot >= currentSlot - SLOT_LENGTH;
+        });
+    }
+   return validReports.length
   }
 
   /**

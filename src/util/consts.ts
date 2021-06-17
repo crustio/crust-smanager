@@ -1,4 +1,7 @@
 // Decision
+// Base
+export const SLOT_LENGTH = 300;
+
 // Current MAX file replicas
 export const MaxFileReplicas = 200;
 // Base pin timeout
