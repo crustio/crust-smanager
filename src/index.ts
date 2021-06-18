@@ -30,9 +30,6 @@ try {
   de.subscribePullings().catch(e =>
     logger.error(`💥  Caught pulling queue error: ${e.toString()}`)
   );
-  de.subscribeSealings().catch(e =>
-    logger.error(`💥  Caught sealing queue error: ${e.toString()}`)
-  );
 } catch (e) {
   logger.error(`💥  Caught unhandled error ${e.toString()}`);
 }
