@@ -230,10 +230,11 @@ export default class DecisionEngine {
               }
             });
         }
-
-        // Push back failed tasks
-        this.pullingQueue.tasks.concat(failedPts);
       }
+
+      // Push back failed tasks
+      this.pullingQueue.tasks.concat(failedPts);
+      logger.info('⏳  Checking pulling queue end');
     });
   }
 
