@@ -31,6 +31,7 @@ export default class DecisionEngine {
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
   private currentBn: number;
+  private pullCount: number;
 
   constructor(
     chainAddr: string,
@@ -47,6 +48,7 @@ export default class DecisionEngine {
     this.nodeId = nodeId;
     this.chainAccount = chainAccount;
     this.allNodeCount = -1;
+    this.pullCount = 0;
     this.ipfsTaskCount = 0;
 
     // MaxQueueLength is 50 and Expired with 1200 blocks(1h)
@@ -176,13 +178,14 @@ export default class DecisionEngine {
     return cron.schedule(`${randSec} * * * * *`, async () => {
       try {
         logger.info('⏳  Checking pulling queue ...');
+        this.pullCount++;
         const oldPts: Task[] = this.pullingQueue.tasks;
         const failedPts: Task[] = [];
 
         // 0. Pop all pulling queue and upgrade node count
         this.pullingQueue.tasks = [];
 
-        if (this.allNodeCount === -1 || this.currentBn % 1800 === 0) {
+        if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
           this.allNodeCount = await this.crustApi.getAllNodeCount();
         }
 
