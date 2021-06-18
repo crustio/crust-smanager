@@ -217,10 +217,6 @@ export default class DecisionEngine {
           await this.ipfsApi
             .pin(pt.cid, to)
             .then(pinRst => {
-              this.ipfsTaskCount--;
-              if (this.ipfsTaskCount < 0) {
-                this.ipfsTaskCount = 0;
-              }
               if (!pinRst) {
                 // a. Pin error with
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
@@ -231,12 +227,14 @@ export default class DecisionEngine {
               }
             })
             .catch(err => {
+              // c. Just drop it as 💩
+              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+            })
+            .finally(() => {
               this.ipfsTaskCount--;
               if (this.ipfsTaskCount < 0) {
                 this.ipfsTaskCount = 0;
               }
-              // c. Just drop it as 💩
-              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
             });
         }
 
