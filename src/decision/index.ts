@@ -1,15 +1,15 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import { Header } from '@polkadot/types/interfaces';
-import TaskQueue, { BT } from '../queue';
+import {Header} from '@polkadot/types/interfaces';
+import TaskQueue, {BT} from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, { FileInfo, UsedInfo } from '../chain';
-import { logger } from '../log';
-import { rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum } from '../util';
+import CrustApi, {FileInfo, UsedInfo} from '../chain';
+import {logger} from '../log';
+import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import { MaxQueueLength, IPFSQueueLength } from '../util/consts';
+import {MaxQueueLength, IPFSQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
