@@ -301,7 +301,8 @@ export default class DecisionEngine {
         logger.info('  ↪  🙅  Not my turn, just passed.');
         return false;
       }
-    } catch {
+    } catch (err) {
+      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
 
