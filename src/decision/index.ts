@@ -208,8 +208,7 @@ export default class DecisionEngine {
           const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
 
           // Async pulling
-          // TODO: add thread limitation
-          await this.ipfsApi
+          this.ipfsApi
             .pin(pt.cid, to)
             .then(pinRst => {
               if (!pinRst) {
