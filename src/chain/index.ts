@@ -119,7 +119,7 @@ export default class CrustApi {
    * Get all validators count
    * @returns Count
    */
-   async validatorsCount(): Promise<number> {
+  async validatorsCount(): Promise<number> {
     const vs = await this.api.query.staking.validators.entries();
     return vs.length;
   }
@@ -149,14 +149,14 @@ export default class CrustApi {
     const workReports = await this.workReportsAll();
     let validReports = [];
     if (_.isArray(workReports)) {
-        const realReports = _.map(workReports, (e) => {
-            return e[1];
-        });
-        validReports = _.filter(realReports, (e) => {
-            return e.report_slot >= currentSlot - SLOT_LENGTH;
-        });
+      const realReports = _.map(workReports, e => {
+        return e[1];
+      });
+      validReports = _.filter(realReports, e => {
+        return e.report_slot >= currentSlot - SLOT_LENGTH;
+      });
     }
-   return validReports.length
+    return validReports.length;
   }
 
   /**

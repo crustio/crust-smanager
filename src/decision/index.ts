@@ -420,15 +420,15 @@ export default class DecisionEngine {
    */
   private async probabilityFilter(): Promise<boolean> {
     // Base probability
-    var pTake = 0.0
-    if (this.allNodeCount == 0) {
+    let pTake = 0.0;
+    if (this.allNodeCount === 0) {
       pTake = 0.0;
     } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
-      pTake = 60.0/this.allNodeCount
+      pTake = 60.0 / this.allNodeCount;
     } else if (this.allNodeCount > 2400 && this.allNodeCount <= 8000) {
-      pTake = 0.025
+      pTake = 0.025;
     } else {
-      pTake = 200/this.allNodeCount;
+      pTake = 200 / this.allNodeCount;
     }
 
     if (
@@ -436,12 +436,11 @@ export default class DecisionEngine {
       this.groupOwner &&
       this.members.length > 0
     ) {
-      pTake = pTake * this.members.length
+      pTake = pTake * this.members.length;
     }
 
-    return pTake > rdm(this.chainAccount)
+    return pTake > rdm(this.chainAccount);
   }
-
 
   /**
    * Judge if is node can pick the file
