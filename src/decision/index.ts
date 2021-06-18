@@ -203,6 +203,7 @@ export default class DecisionEngine {
             // Q length > 10 drop it to failed pts
             if (this.ipfsTaskCount > IPFSQueueLength) {
               failedPts.push(pt);
+              continue
             } else {
               this.ipfsTaskCount++;
             }
