@@ -1,15 +1,15 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT} from '../queue';
+import { Header } from '@polkadot/types/interfaces';
+import TaskQueue, { BT } from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, {FileInfo, UsedInfo} from '../chain';
-import {logger} from '../log';
-import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
+import CrustApi, { FileInfo, UsedInfo } from '../chain';
+import { logger } from '../log';
+import { rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum } from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength, IPFSQueueLength} from '../util/consts';
+import { MaxQueueLength, IPFSQueueLength } from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -46,7 +46,7 @@ export default class DecisionEngine {
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
     this.chainAccount = chainAccount;
-    this.allNodeCount = 0;
+    this.allNodeCount = -1;
     this.ipfsTaskCount = 0;
 
     // MaxQueueLength is 50 and Expired with 1200 blocks(1h)
@@ -88,7 +88,6 @@ export default class DecisionEngine {
 
       // 3. Update current block number and information
       this.currentBn = bn;
-      this.allNodeCount = await this.crustApi.getAllNodeCount();
 
       // 4. If the node identity is member, wait for it to join group
       if (this.nodeId === consts.MEMBER) {
@@ -159,6 +158,7 @@ export default class DecisionEngine {
 
       // 8. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
+      logger.info(`⛓  Deal new block ${bn}(${bh}) end`);
     };
 
     return await this.crustApi.subscribeNewHeads(addPullings);
@@ -179,8 +179,12 @@ export default class DecisionEngine {
         const oldPts: Task[] = this.pullingQueue.tasks;
         const failedPts: Task[] = [];
 
-        // 0. Pop all pulling queue
+        // 0. Pop all pulling queue and upgrade node count
         this.pullingQueue.tasks = [];
+
+        if (this.allNodeCount === -1 || this.currentBn % 1800 === 0) {
+          this.allNodeCount = await this.crustApi.getAllNodeCount();
+        }
 
         logger.info(
           `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
