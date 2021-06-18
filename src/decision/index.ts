@@ -9,7 +9,7 @@ import {logger} from '../log';
 import {rdm, getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
 import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength} from '../util/consts';
+import {MaxQueueLength, IPFSQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -26,6 +26,7 @@ export default class DecisionEngine {
   private groupOwner: string | null;
   private chainAccount: string;
   private allNodeCount: number;
+  private ipfsTaskCount: number;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
@@ -47,6 +48,7 @@ export default class DecisionEngine {
     this.nodeId = nodeId;
     this.chainAccount = chainAccount;
     this.allNodeCount = 0;
+    this.ipfsTaskCount = 0;
 
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
@@ -188,11 +190,21 @@ export default class DecisionEngine {
       logger.info(
         `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
       );
+      logger.info(
+        `  ↪ 📨  Ipfs task count: ${this.ipfsTaskCount}/${IPFSQueueLength}`
+      );
 
       // 1. Loop old pulling tasks
       for (const pt of oldPts) {
         // 2. If join pullings and start puling in ipfs
         if (await this.pickUpPulling(pt)) {
+          // Q length > 10 drop it to failed pts
+          if (this.ipfsTaskCount > IPFSQueueLength) {
+            failedPts.push(pt);
+          } else {
+            this.ipfsTaskCount++;
+          }
+
           logger.info(
             `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
           );
@@ -205,10 +217,13 @@ export default class DecisionEngine {
           await this.ipfsApi
             .pin(pt.cid, to)
             .then(pinRst => {
+              this.ipfsTaskCount--;
+              if (this.ipfsTaskCount < 0) {
+                this.ipfsTaskCount = 0;
+              }
               if (!pinRst) {
                 // a. Pin error with
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-                failedPts.push(pt);
               } else {
                 // b. Pin successfully, add into sealing queue
                 logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
@@ -216,9 +231,12 @@ export default class DecisionEngine {
               }
             })
             .catch(err => {
+              this.ipfsTaskCount--;
+              if (this.ipfsTaskCount < 0) {
+                this.ipfsTaskCount = 0;
+              }
               // c. Just drop it as 💩
               logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-              failedPts.push(pt);
             });
         }
 
