@@ -284,12 +284,6 @@ export default class DecisionEngine {
         return false;
       }
 
-      // Whether this guy is member and its his turn to pick file
-      if (!(await this.isMyTurn(t.cid))) {
-        logger.info('  ↪  🙅  Not my turn, just passed.');
-        return false;
-      }
-
       // Probability filtering
       if (!(await this.probabilityFilter())) {
         logger.info('  ↪  🙅  Probability filter works, just passed.');
