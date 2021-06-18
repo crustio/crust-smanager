@@ -47,7 +47,7 @@ export default class DecisionEngine {
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
     this.chainAccount = chainAccount;
-    this.allNodeCount = 0;
+    this.allNodeCount = -1;
     this.ipfsTaskCount = 0;
 
     // MaxQueueLength is 50 and Expired with 600 blocks(1h)
@@ -93,7 +93,6 @@ export default class DecisionEngine {
 
       // 3. Update current block number and information
       this.currentBn = bn;
-      this.allNodeCount = await this.crustApi.getAllNodeCount();
 
       // 4. If the node identity is member, wait for it to join group
       if (this.nodeId === consts.MEMBER) {
@@ -180,66 +179,79 @@ export default class DecisionEngine {
     const randSec = getRandSec(20);
     // Call IPFS pulling every ${randSec}
     return cron.schedule(`${randSec} * * * * *`, async () => {
-      const oldPts: Task[] = this.pullingQueue.tasks;
-      const failedPts: Task[] = [];
+      try {
+        logger.info('⏳  Checking pulling queue ...');
+        const oldPts: Task[] = this.pullingQueue.tasks;
+        const failedPts: Task[] = [];
 
-      // 0. Pop all pulling queue
-      this.pullingQueue.tasks = [];
+        // 0. Pop all pulling queue and upgrade node count
+        this.pullingQueue.tasks = [];
 
-      logger.info('⏳  Checking pulling queue ...');
-      logger.info(
-        `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
-      );
-      logger.info(
-        `  ↪ 📨  Ipfs task count: ${this.ipfsTaskCount}/${IPFSQueueLength}`
-      );
+        if (this.allNodeCount === -1 || this.currentBn % 1800 === 0) {
+          this.allNodeCount = await this.crustApi.getAllNodeCount();
+        }
 
-      // 1. Loop old pulling tasks
-      for (const pt of oldPts) {
-        // 2. If join pullings and start puling in ipfs
-        if (await this.pickUpPulling(pt)) {
-          // Q length > 10 drop it to failed pts
-          if (this.ipfsTaskCount > IPFSQueueLength) {
-            failedPts.push(pt);
-          } else {
-            this.ipfsTaskCount++;
+        logger.info(
+          `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs task count: ${this.ipfsTaskCount}/${IPFSQueueLength}`
+        );
+
+        // 1. Loop old pulling tasks
+        for (const pt of oldPts) {
+          // 2. If join pullings and start puling in ipfs
+          if (await this.pickUpPulling(pt)) {
+            // Q length > 10 drop it to failed pts
+            if (this.ipfsTaskCount > IPFSQueueLength) {
+              failedPts.push(pt);
+            } else {
+              this.ipfsTaskCount++;
+            }
+
+            logger.info(
+              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
+                pt
+              )}, pulling from ipfs`
+            );
+
+            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
+            // (baseSpeedReference: 100kB/s)
+            const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
+
+            // Async pulling
+            this.ipfsApi
+              .pin(pt.cid, to)
+              .then(pinRst => {
+                if (!pinRst) {
+                  // a. Pin error with
+                  logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
+                } else {
+                  // b. Pin successfully, add into sealing queue
+                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                  this.sealingQueue.push(pt);
+                }
+              })
+              .catch(err => {
+                // c. Just drop it as 💩
+                logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+              })
+              .finally(() => {
+                this.ipfsTaskCount--;
+                if (this.ipfsTaskCount < 0) {
+                  this.ipfsTaskCount = 0;
+                }
+              });
           }
-
-          logger.info(
-            `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
-          );
-
-          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
-          // (baseSpeedReference: 100kB/s)
-          const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
-
-          // Async pulling
-          await this.ipfsApi
-            .pin(pt.cid, to)
-            .then(pinRst => {
-              if (!pinRst) {
-                // a. Pin error with
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-              } else {
-                // b. Pin successfully, add into sealing queue
-                logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-                this.sealingQueue.push(pt);
-              }
-            })
-            .catch(err => {
-              // c. Just drop it as 💩
-              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-            })
-            .finally(() => {
-              this.ipfsTaskCount--;
-              if (this.ipfsTaskCount < 0) {
-                this.ipfsTaskCount = 0;
-              }
-            });
         }
 
         // Push back failed tasks
         this.pullingQueue.tasks.concat(failedPts);
+        logger.info('⏳  Checking pulling queue end');
+      } catch (err) {
+        logger.error(
+          `  ↪ 💥  Checking pulling queue error, detail with ${err}`
+        );
       }
     });
   }
