@@ -2,14 +2,14 @@ import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT} from '../queue';
+import TaskQueue, {BT, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
 import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength, IPFSQueueLength} from '../util/consts';
+import {MaxQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -26,7 +26,7 @@ export default class DecisionEngine {
   private groupOwner: string | null;
   private chainAccount: string;
   private allNodeCount: number;
-  private ipfsTaskCount: number;
+  private ipfsQueue: IPFSQueue;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
@@ -49,12 +49,14 @@ export default class DecisionEngine {
     this.chainAccount = chainAccount;
     this.allNodeCount = -1;
     this.pullCount = 0;
-    this.ipfsTaskCount = 0;
 
-    // MaxQueueLength is 50 and Expired with 1200 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
+    );
+    this.ipfsQueue = new IPFSQueue(
+      consts.IPFSFilesMaxSize,
+      consts.IPFSQueueLimits
     );
 
     // Init the current block number
@@ -193,7 +195,10 @@ export default class DecisionEngine {
           `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
         );
         logger.info(
-          `  ↪ 📨  Ipfs task count: ${this.ipfsTaskCount}/${IPFSQueueLength}`
+          `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
 
         // 1. Loop pulling tasks
@@ -201,11 +206,9 @@ export default class DecisionEngine {
           // 2. If join pullings and start puling in ipfs
           if (await this.shouldPull(pt)) {
             // Q length >= 10 drop it to failed pts
-            if (this.ipfsTaskCount >= IPFSQueueLength) {
+            if (!this.ipfsQueue.push(pt.size)) {
               failedPts.push(pt);
               continue;
-            } else {
-              this.ipfsTaskCount++;
             }
 
             logger.info(
@@ -214,9 +217,9 @@ export default class DecisionEngine {
               )}, pulling from ipfs`
             );
 
-            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
+            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
             // (baseSpeedReference: 100kB/s)
-            const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
+            const to = consts.BasePinTimeout + (pt.size / 1024 / 200) * 1000;
 
             // Async pulling
             this.ipfsApi
@@ -235,10 +238,7 @@ export default class DecisionEngine {
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
               })
               .finally(() => {
-                this.ipfsTaskCount--;
-                if (this.ipfsTaskCount < 0) {
-                  this.ipfsTaskCount = 0;
-                }
+                this.ipfsQueue.pop(pt.size);
               });
           }
         }
