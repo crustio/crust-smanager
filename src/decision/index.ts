@@ -61,8 +61,8 @@ export default class DecisionEngine {
     );
     this.ipfsQueue = new IPFSQueue(
       consts.IPFSFilesMaxSize,
-      consts.IPFSQueueLimits,
-    )
+      consts.IPFSQueueLimits
+    );
 
     // Init the current block number
     this.currentBn = 0;
@@ -249,7 +249,7 @@ export default class DecisionEngine {
         }
 
         // Push back failed tasks
-        this.pullingQueue.tasks.concat(failedPts);
+        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
         logger.info('⏳  Checking pulling queue end');
       } catch (err) {
         logger.error(
@@ -435,6 +435,8 @@ export default class DecisionEngine {
     // Base probability
     let pTake = 0.0;
     if (this.allNodeCount === 0) {
+      pTake = 0.0;
+    } else if (this.allNodeCount === -1) {
       pTake = 0.0;
     } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
       pTake = 60.0 / this.allNodeCount;

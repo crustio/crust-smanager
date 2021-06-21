@@ -70,9 +70,9 @@ export class IPFSQueue {
   constructor(fms: number[], fql: number[]) {
     this.filesMaxSize = fms;
     this.filesQueueLimit = fql;
-    this.currentFilesQueueLen = fql;
-    for (let index = 0; index < this.currentFilesQueueLen.length; index++) {
-      this.currentFilesQueueLen[index] = 0;
+    this.currentFilesQueueLen = [];
+    for (let index = 0; index < this.filesQueueLimit.length; index++) {
+      this.currentFilesQueueLen.push(0);
     }
   }
 
@@ -80,7 +80,7 @@ export class IPFSQueue {
     let index = 0;
     for (; index < this.filesMaxSize.length; index++) {
       if (size <= this.filesMaxSize[index]) {
-        break
+        break;
       }
     }
     return index;
@@ -97,7 +97,7 @@ export class IPFSQueue {
 
   pop(size: number) {
     const index = this.findIndex(size);
-    if(this.currentFilesQueueLen[index] > 0) {
+    if (this.currentFilesQueueLen[index] > 0) {
       this.currentFilesQueueLen[index]--;
     } else if (this.currentFilesQueueLen[index] === 0) {
       return;
