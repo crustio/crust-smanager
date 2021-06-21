@@ -236,6 +236,7 @@ export default class DecisionEngine {
               .catch(err => {
                 // c. Just drop it as 💩
                 logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+                this.sworkerApi.sealEnd(pt.cid);
               })
               .finally(() => {
                 this.ipfsQueue.pop(pt.size);
@@ -244,7 +245,7 @@ export default class DecisionEngine {
         }
 
         // Push back failed tasks
-        this.pullingQueue.tasks.concat(failedPts);
+        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
         logger.info('⏳  Checking pulling queue end');
       } catch (err) {
         logger.error(
