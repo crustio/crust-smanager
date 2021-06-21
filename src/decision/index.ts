@@ -1,15 +1,15 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT, IPFSQueue} from '../queue';
+import { Header } from '@polkadot/types/interfaces';
+import TaskQueue, { BT, IPFSQueue } from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, {FileInfo, UsedInfo} from '../chain';
-import {logger} from '../log';
-import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
+import CrustApi, { FileInfo, UsedInfo } from '../chain';
+import { logger } from '../log';
+import { rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum } from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength} from '../util/consts';
+import { MaxQueueLength } from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -267,7 +267,7 @@ export default class DecisionEngine {
    */
   private async shouldPull(t: Task): Promise<boolean> {
     try {
-      // 1. Get and judge file size is match
+      // Get and judge file size is match
       // TODO: Ideally, we should compare the REAL file size(from ipfs) and
       // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
       // so we choose to use on-chain size in the default strategy
@@ -281,7 +281,19 @@ export default class DecisionEngine {
       // }
       const size = t.size;
 
-      // 2. Get and judge repo can take it, make sure the free can take double file
+      // Probability filtering
+      if (!(await this.probabilityFilter())) {
+        logger.info('  ↪  🙅  Probability filter works, just passed.');
+        return false;
+      }
+
+      // Whether is my turn to pickup file
+      if (!(await this.isMyTurn(t.cid))) {
+        logger.info('  ↪  🙅  Not my turn, just passed.');
+        return false;
+      }
+
+      // Get and judge repo can take it, make sure the free can take double file
       const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2)) {
@@ -294,7 +306,7 @@ export default class DecisionEngine {
         return false;
       }
 
-      // 3. Judge if it should pull from chain-side based on:
+      // Judge if it should pull from chain-side based on:
       // * 1. Replica is full
       // * 2. Group duplication
       // If replicas already reach the limit or file not exist
@@ -302,17 +314,6 @@ export default class DecisionEngine {
         return false;
       }
 
-      // Probability filtering
-      if (!(await this.probabilityFilter())) {
-        logger.info('  ↪  🙅  Probability filter works, just passed.');
-        return false;
-      }
-
-      // Whether is my turn to pickup file
-      if (!(await this.isMyTurn(t.cid))) {
-        logger.info('  ↪  🙅  Not my turn, just passed.');
-        return false;
-      }
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
@@ -331,8 +332,6 @@ export default class DecisionEngine {
     const usedInfo: UsedInfo | null = await this.crustApi.maybeGetFileUsedInfo(
       cid
     );
-
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
 
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
