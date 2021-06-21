@@ -355,7 +355,7 @@ export default class DecisionEngine {
   private async probabilityFilter(): Promise<boolean> {
     // Base probability
     let pTake = 0.0;
-    if (this.allNodeCount === 0) {
+    if (this.allNodeCount === 0 || this.allNodeCount === -1) {
       pTake = 0.0;
     } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
       pTake = 60.0 / this.allNodeCount;
