@@ -227,7 +227,8 @@ export default class DecisionEngine {
               .then(pinRst => {
                 if (!pinRst) {
                   // a. Pin error with
-                  logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
+                  logger.warning(`  ↪ 💥  Pin ${pt.cid} failed`);
+                  this.sworkerApi.sealEnd(pt.cid);
                 } else {
                   // b. Pin successfully
                   logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
@@ -235,7 +236,7 @@ export default class DecisionEngine {
               })
               .catch(err => {
                 // c. Just drop it as 💩
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+                logger.warning(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
                 this.sworkerApi.sealEnd(pt.cid);
               })
               .finally(() => {
