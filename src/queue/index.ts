@@ -61,3 +61,48 @@ export default class TaskQueue<T extends BT> {
     });
   }
 }
+
+export class IPFSQueue {
+  readonly filesMaxSize: number[]; // The max size of different files
+  readonly filesQueueLimit: number[]; // The queue limit of different files
+  currentFilesQueueLen: number[]; // The current queue length of different files
+
+  constructor(fms: number[], fql: number[]) {
+    this.filesMaxSize = fms;
+    this.filesQueueLimit = fql;
+    this.currentFilesQueueLen = fql;
+    for (let index = 0; index < this.currentFilesQueueLen.length; index++) {
+      this.currentFilesQueueLen[index] = 0;
+    }
+  }
+
+  private findIndex(size: number): number {
+    let index = 0;
+    for (; index < this.filesMaxSize.length; index++) {
+      if (size <= this.filesMaxSize[index]) {
+        break
+      }
+    }
+    return index;
+  }
+
+  push(size: number): boolean {
+    const index = this.findIndex(size);
+    if (this.currentFilesQueueLen[index] < this.filesQueueLimit[index]) {
+      this.currentFilesQueueLen[index]++;
+      return true;
+    }
+    return false;
+  }
+
+  pop(size: number) {
+    const index = this.findIndex(size);
+    if(this.currentFilesQueueLen[index] > 0) {
+      this.currentFilesQueueLen[index]--;
+    } else if (this.currentFilesQueueLen[index] === 0) {
+      return;
+    } else {
+      this.currentFilesQueueLen[index] = 0;
+    }
+  }
+}
