@@ -200,8 +200,8 @@ export default class DecisionEngine {
         for (const pt of oldPts) {
           // 2. If join pullings and start puling in ipfs
           if (await this.shouldPull(pt)) {
-            // Q length > 10 drop it to failed pts
-            if (this.ipfsTaskCount > IPFSQueueLength) {
+            // Q length >= 10 drop it to failed pts
+            if (this.ipfsTaskCount >= IPFSQueueLength) {
               failedPts.push(pt);
               continue;
             } else {
