@@ -209,7 +209,7 @@ export default class DecisionEngine {
         // 1. Loop old pulling tasks
         for (const pt of oldPts) {
           // 2. If join pullings and start puling in ipfs
-          if (await this.pickUpPulling(pt)) {
+          if (await this.shouldPull(pt)) {
             if (!this.ipfsQueue.push(pt.size)) {
               failedPts.push(pt);
               continue;
@@ -314,48 +314,6 @@ export default class DecisionEngine {
     });
   }
 
-  /// CUSTOMIZE STRATEGY
-  /// we only give the default pickup strategies here, including:
-  /// 1. random add storage orders;
-  /// 2. judge file size and free space from local ipfs repo;
-  /**
-   * Add or ignore to pulling queue by a given cid
-   * @param t Task
-   * @returns if can pick
-   */
-  // TODO: add pulling pick up strategy here, basically random with pks?
-  private async pickUpPulling(t: Task): Promise<boolean> {
-    try {
-      // 1. Get and judge file size is match
-      // TODO: Ideally, we should compare the REAL file size(from ipfs) and
-      // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
-      // so we choose to use on-chain size in the default strategy
-
-      // Ideally code:
-      // const size = await this.ipfsApi.size(t.cid);
-      // logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
-      // if (size !== t.size) {
-      //   logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-      //   // CUSTOMER STRATEGY, can pick or not
-      // }
-      const size = t.size;
-
-      // 2. Get and judge repo can take it, make sure the free can take double file
-      const free = await this.freeSpace();
-      // If free < t.size * 2.2, 0.2 for the extra sealed size
-      if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
-        return false;
-      }
-
-      // 3. Judge if it should pull from chain-side
-      return await this.shouldPull(t.cid);
-    } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
-      return false;
-    }
-  }
-
   /**
    * Pick or drop sealing queue by a given cid
    * @param t Task
@@ -372,19 +330,16 @@ export default class DecisionEngine {
     return true;
   }
 
+  /// CUSTOMIZE STRATEGY
+  /// we only give the default pickup strategies here, including:
+  /// 1. random add storage orders;
+  /// 2. judge file size and free space from local ipfs repo;
   /**
-   * Should pull decided from chain-side:
-   * 1. Replica is full
-   * 2. Group duplication
-   * @param cid File hash
-   * @returns pull it or not
+   * Add or ignore to pulling queue by a given cid
+   * @param t Task
+   * @returns if can pick
    */
-  private async shouldPull(cid: string): Promise<boolean> {
-    // If replicas already reach the limit or file not exist
-    if (await this.isReplicaFullOrFileNotExist(cid)) {
-      return false;
-    }
-
+  private async shouldPull(t: Task): Promise<boolean> {
     // Probability filtering
     if (!(await this.probabilityFilter())) {
       logger.info('  ↪  🙅  Probability filter works, just passed.');
@@ -392,8 +347,21 @@ export default class DecisionEngine {
     }
 
     // Whether is my turn to pickup file
-    if (!(await this.isMyTurn(cid))) {
+    if (!(await this.isMyTurn(t.cid))) {
       logger.info('  ↪  🙅  Not my turn, just passed.');
+      return false;
+    }
+
+    // If replicas already reach the limit or file not exist
+    if (await this.isReplicaFullOrFileNotExist(t.cid)) {
+      return false;
+    }
+
+    // Get and judge repo can take it, make sure the free can take double file
+    const free = await this.freeSpace();
+    // If free < t.size * 2.2, 0.2 for the extra sealed size
+    if (free.lte(t.size * 2.2)) {
+      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}*2.2`);
       return false;
     }
 
@@ -410,8 +378,6 @@ export default class DecisionEngine {
     const usedInfo: UsedInfo | null = await this.crustApi.maybeGetFileUsedInfo(
       cid
     );
-
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
 
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
