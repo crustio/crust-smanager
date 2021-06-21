@@ -50,7 +50,7 @@ export function addrToHostPort(addr: string): [string, string] {
  * @returns 0-60s
  */
 export function getRandSec(seed: number): number {
-  return Math.round((Math.random() * Date.now() + seed) % 60);
+  return Math.floor((Math.random() * Date.now() + seed) % 60);
 }
 
 /**
