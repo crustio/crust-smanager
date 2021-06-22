@@ -227,7 +227,7 @@ export default class DecisionEngine {
               .then(pinRst => {
                 if (!pinRst) {
                   // a. Pin error with
-                  logger.warning(`  ↪ 💥  Pin ${pt.cid} failed`);
+                  logger.warn(`  ↪ 💥  Pin ${pt.cid} failed`);
                   this.sworkerApi.sealEnd(pt.cid);
                 } else {
                   // b. Pin successfully
@@ -236,7 +236,7 @@ export default class DecisionEngine {
               })
               .catch(err => {
                 // c. Just drop it as 💩
-                logger.warning(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
                 this.sworkerApi.sealEnd(pt.cid);
               })
               .finally(() => {
@@ -296,8 +296,10 @@ export default class DecisionEngine {
       // Get and judge repo can take it, make sure the free can take double file
       const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
-      if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
+      if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize)) {
+        logger.warn(
+          `  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2 - ${this.ipfsQueue.allFileSize}`
+        );
         return false;
       } else if (sysFree < consts.SysMinFreeSpace) {
         logger.warn(

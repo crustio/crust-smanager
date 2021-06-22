@@ -66,6 +66,7 @@ export class IPFSQueue {
   readonly filesMaxSize: number[]; // The max size of different files
   readonly filesQueueLimit: number[]; // The queue limit of different files
   currentFilesQueueLen: number[]; // The current queue length of different files
+  allFileSize: number; // The total size of files
 
   constructor(fms: number[], fql: number[]) {
     this.filesMaxSize = fms;
@@ -74,6 +75,7 @@ export class IPFSQueue {
     for (let index = 0; index < this.filesQueueLimit.length; index++) {
       this.currentFilesQueueLen.push(0);
     }
+    this.allFileSize = 0;
   }
 
   private findIndex(size: number): number {
@@ -90,6 +92,7 @@ export class IPFSQueue {
     const index = this.findIndex(size);
     if (this.currentFilesQueueLen[index] < this.filesQueueLimit[index]) {
       this.currentFilesQueueLen[index]++;
+      this.allFileSize += size;
       return true;
     }
     return false;
@@ -103,6 +106,11 @@ export class IPFSQueue {
       return;
     } else {
       this.currentFilesQueueLen[index] = 0;
+    }
+
+    this.allFileSize -= size;
+    if (this.allFileSize < 0) {
+      this.allFileSize = 0;
     }
   }
 }

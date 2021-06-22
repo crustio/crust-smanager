@@ -34,7 +34,7 @@ export default class SworkerApi {
 
       return res.status === 200;
     } catch (e) {
-      logger.warning(`Ending file ${cid} timeout or error: ${e.toString()}`);
+      logger.warn(`Ending file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
