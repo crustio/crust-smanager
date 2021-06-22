@@ -1,15 +1,15 @@
 import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
-import { Header } from '@polkadot/types/interfaces';
-import TaskQueue, { BT, IPFSQueue } from '../queue';
+import {Header} from '@polkadot/types/interfaces';
+import TaskQueue, {BT, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, { FileInfo, UsedInfo } from '../chain';
-import { logger } from '../log';
-import { rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum } from '../util';
+import CrustApi, {FileInfo, UsedInfo} from '../chain';
+import {logger} from '../log';
+import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import { MaxQueueLength } from '../util/consts';
+import {MaxQueueLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -313,7 +313,6 @@ export default class DecisionEngine {
       if (await this.isReplicaFullOrFileNotExist(t.cid)) {
         return false;
       }
-
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
@@ -356,12 +355,12 @@ export default class DecisionEngine {
     let pTake = 0.0;
     if (this.allNodeCount === 0 || this.allNodeCount === -1) {
       pTake = 0.0;
-    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
-      pTake = 60.0 / this.allNodeCount;
-    } else if (this.allNodeCount > 2400 && this.allNodeCount <= 8000) {
-      pTake = 0.025;
+    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2000) {
+      pTake = 100.0 / this.allNodeCount;
+    } else if (this.allNodeCount > 2000 && this.allNodeCount <= 5000) {
+      pTake = 0.05;
     } else {
-      pTake = 200 / this.allNodeCount;
+      pTake = 250 / this.allNodeCount;
     }
 
     if (
