@@ -404,10 +404,10 @@ export default class DecisionEngine {
       pTake = 0.0;
     } else if (this.allNodeCount === -1) {
       pTake = 0.0;
-    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2400) {
-      pTake = 60.0 / this.allNodeCount;
-    } else if (this.allNodeCount > 2400 && this.allNodeCount <= 8000) {
-      pTake = 0.025;
+    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2000) {
+      pTake = 80.0 / this.allNodeCount;
+    } else if (this.allNodeCount > 2000 && this.allNodeCount <= 5000) {
+      pTake = 0.04;
     } else {
       pTake = 200 / this.allNodeCount;
     }
