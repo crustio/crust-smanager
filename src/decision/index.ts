@@ -303,10 +303,11 @@ export default class DecisionEngine {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
           } else if (sealRes === SealRes.SealUnavailable) {
             logger.info(`  ↪ 💖  Seal ${st.cid} unavailable`);
-            this.sealingQueue.push(st); // Push back to sealing queue
           } else {
             logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
           }
+        } else {
+          this.ipfsQueue.popSize(st.size);
         }
       }
 
