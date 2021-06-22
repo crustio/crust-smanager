@@ -297,6 +297,7 @@ export default class DecisionEngine {
           );
 
           const sealRes: SealRes = await this.sworkerApi.seal(st.cid);
+          this.ipfsQueue.popSize(st.size);
 
           if (sealRes === SealRes.SealSuccess) {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
@@ -360,8 +361,10 @@ export default class DecisionEngine {
     // Get and judge repo can take it, make sure the free can take double file
     const free = await this.freeSpace();
     // If free < t.size * 2.2, 0.2 for the extra sealed size
-    if (free.lte(t.size * 2.2)) {
-      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}*2.2`);
+    if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize * 2.2)) {
+      logger.warn(
+        `  ↪ ⚠️  Free space not enough ${free} < ${t.size}*2.2 - ${this.ipfsQueue.allFileSize}*2.2`
+      );
       return false;
     }
 
