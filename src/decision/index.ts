@@ -154,10 +154,11 @@ export default class DecisionEngine {
       // 7. If got closed files, try to delete it by calling sWorker
       for (const closedFileCid of closedFiles) {
         logger.info(`  ↪ 🗑  Try to delete file ${closedFileCid} from sWorker`);
-        const deleted = await this.sworkerApi.delete(closedFileCid);
-        if (deleted) {
-          logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
-        }
+        this.sworkerApi.delete(closedFileCid).then(deleted => {
+          if (deleted) {
+            logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
+          }
+        });
       }
 
       // 8. Check and clean outdated tasks
@@ -228,7 +229,6 @@ export default class DecisionEngine {
                 if (!pinRst) {
                   // a. Pin error with
                   logger.warn(`  ↪ 💥  Pin ${pt.cid} failed`);
-                  this.sworkerApi.sealEnd(pt.cid);
                 } else {
                   // b. Pin successfully
                   logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
@@ -236,8 +236,11 @@ export default class DecisionEngine {
               })
               .catch(err => {
                 // c. Just drop it as 💩
-                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-                this.sworkerApi.sealEnd(pt.cid);
+                const errS: string = err;
+                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${errS}`);
+                if (errS.indexOf('TimeoutError') !== -1) {
+                  this.sworkerApi.sealEnd(pt.cid);
+                }
               })
               .finally(() => {
                 this.ipfsQueue.pop(pt.size);
