@@ -1,5 +1,6 @@
 import {URL} from 'url';
 import BigNumber from 'bignumber.js';
+import * as seedrandom from 'seedrandom';
 
 export const sleep = require('util').promisify(setTimeout);
 
@@ -49,7 +50,16 @@ export function addrToHostPort(addr: string): [string, string] {
  * @returns 0-60s
  */
 export function getRandSec(seed: number): number {
-  return Math.round((Math.random() * Date.now() + seed) % 60);
+  return Math.floor((Math.random() * Date.now() + seed) % 60);
+}
+
+/**
+ * Get random float
+ * @returns 0-1
+ */
+export function rdm(seed: string): number {
+  const rng = seedrandom.default(seed, {entropy: true});
+  return rng();
 }
 
 /**

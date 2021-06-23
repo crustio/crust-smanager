@@ -2,11 +2,11 @@ import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT} from '../queue';
+import TaskQueue, {BT, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
+import {rdm, getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
 import SworkerApi, {SealRes} from '../sworker';
 import BigNumber from 'bignumber.js';
 import {MaxQueueLength} from '../util/consts';
@@ -24,11 +24,15 @@ export default class DecisionEngine {
   private readonly sworkerApi: SworkerApi;
   private readonly nodeId: string;
   private groupOwner: string | null;
+  private chainAccount: string;
+  private allNodeCount: number;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
   private sealingQueue: TaskQueue<Task>;
+  private ipfsQueue: IPFSQueue;
   private currentBn: number;
+  private pullCount: number;
 
   constructor(
     chainAddr: string,
@@ -43,8 +47,10 @@ export default class DecisionEngine {
     this.ipfsApi = new IpfsApi(ipfsAddr, ito);
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
+    this.chainAccount = chainAccount;
+    this.allNodeCount = -1;
+    this.pullCount = 0;
 
-    // MaxQueueLength is 50 and Expired with 600 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
@@ -52,6 +58,10 @@ export default class DecisionEngine {
     this.sealingQueue = new TaskQueue<Task>(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
+    );
+    this.ipfsQueue = new IPFSQueue(
+      consts.IPFSFilesMaxSize,
+      consts.IPFSQueueLimits
     );
 
     // Init the current block number
@@ -85,7 +95,7 @@ export default class DecisionEngine {
 
       logger.info(`⛓  Got new block ${bn}(${bh})`);
 
-      // 3. Update current block number
+      // 3. Update current block number and information
       this.currentBn = bn;
 
       // 4. If the node identity is member, wait for it to join group
@@ -173,52 +183,78 @@ export default class DecisionEngine {
     const randSec = getRandSec(20);
     // Call IPFS pulling every ${randSec}
     return cron.schedule(`${randSec} * * * * *`, async () => {
-      const oldPts: Task[] = this.pullingQueue.tasks;
-      const failedPts: Task[] = [];
+      try {
+        logger.info('⏳  Checking pulling queue ...');
+        this.pullCount++;
+        const oldPts: Task[] = this.pullingQueue.tasks;
+        const failedPts: Task[] = [];
 
-      // 0. Pop all pulling queue
-      this.pullingQueue.tasks = [];
+        // 0. Pop all pulling queue and upgrade node count
+        this.pullingQueue.tasks = [];
 
-      logger.info('⏳  Checking pulling queue ...');
-      logger.info(
-        `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
-      );
+        if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
+          this.allNodeCount = await this.crustApi.getAllNodeCount();
+        }
 
-      // 1. Loop old pulling tasks
-      for (const pt of oldPts) {
-        // 2. If join pullings and start puling in ipfs
-        if (await this.pickUpPulling(pt)) {
-          logger.info(
-            `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
-          );
+        logger.info(
+          `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
+        );
 
-          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
-          // (baseSpeedReference: 100kB/s)
-          const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
-
-          // Async pulling
-          await this.ipfsApi
-            .pin(pt.cid, to)
-            .then(pinRst => {
-              if (!pinRst) {
-                // a. Pin error with
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-                failedPts.push(pt);
-              } else {
-                // b. Pin successfully, add into sealing queue
-                logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-                this.sealingQueue.push(pt);
-              }
-            })
-            .catch(err => {
-              // c. Just drop it as 💩
-              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+        // 1. Loop old pulling tasks
+        for (const pt of oldPts) {
+          // 2. If join pullings and start puling in ipfs
+          if (await this.shouldPull(pt)) {
+            if (!this.ipfsQueue.push(pt.size)) {
               failedPts.push(pt);
-            });
+              continue;
+            }
+
+            logger.info(
+              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
+                pt
+              )}, pulling from ipfs`
+            );
+
+            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
+            // (baseSpeedReference: 100kB/s)
+            const to = consts.BasePinTimeout + (pt.size / 1024 / 200) * 1000;
+
+            // Async pulling
+            this.ipfsApi
+              .pin(pt.cid, to)
+              .then(pinRst => {
+                if (!pinRst) {
+                  // a. Pin error with
+                  logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
+                } else {
+                  // b. Pin successfully, add into sealing queue
+                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                  this.sealingQueue.push(pt);
+                }
+              })
+              .catch(err => {
+                // c. Just drop it as 💩
+                logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+              })
+              .finally(() => {
+                this.ipfsQueue.pop(pt.size);
+              });
+          }
         }
 
         // Push back failed tasks
-        this.pullingQueue.tasks.concat(failedPts);
+        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
+        logger.info('⏳  Checking pulling queue end');
+      } catch (err) {
+        logger.error(
+          `  ↪ 💥  Checking pulling queue error, detail with ${err}`
+        );
       }
     });
   }
@@ -261,63 +297,23 @@ export default class DecisionEngine {
           );
 
           const sealRes: SealRes = await this.sworkerApi.seal(st.cid);
+          this.ipfsQueue.popSize(st.size);
 
           if (sealRes === SealRes.SealSuccess) {
             logger.info(`  ↪ 💖  Seal ${st.cid} successfully`);
           } else if (sealRes === SealRes.SealUnavailable) {
             logger.info(`  ↪ 💖  Seal ${st.cid} unavailable`);
-            this.sealingQueue.push(st); // Push back to sealing queue
           } else {
             logger.error(`  ↪ 💥  Seal ${st.cid} failed`);
           }
+        } else {
+          this.ipfsQueue.popSize(st.size);
         }
       }
 
       // 5. Unlock sWorker
       this.locker.set('sworker', false);
     });
-  }
-
-  /// CUSTOMIZE STRATEGY
-  /// we only give the default pickup strategies here, including:
-  /// 1. random add storage orders;
-  /// 2. judge file size and free space from local ipfs repo;
-  /**
-   * Add or ignore to pulling queue by a given cid
-   * @param t Task
-   * @returns if can pick
-   */
-  // TODO: add pulling pick up strategy here, basically random with pks?
-  private async pickUpPulling(t: Task): Promise<boolean> {
-    try {
-      // 1. Get and judge file size is match
-      // TODO: Ideally, we should compare the REAL file size(from ipfs) and
-      // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
-      // so we choose to use on-chain size in the default strategy
-
-      // Ideally code:
-      // const size = await this.ipfsApi.size(t.cid);
-      // logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
-      // if (size !== t.size) {
-      //   logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-      //   // CUSTOMER STRATEGY, can pick or not
-      // }
-      const size = t.size;
-
-      // 2. Get and judge repo can take it, make sure the free can take double file
-      const free = await this.freeSpace();
-      // If free < t.size * 2.2, 0.2 for the extra sealed size
-      if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
-        return false;
-      }
-
-      // 3. Judge if it should pull from chain-side
-      return await this.shouldPull(t.cid);
-    } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
-      return false;
-    }
   }
 
   /**
@@ -336,22 +332,40 @@ export default class DecisionEngine {
     return true;
   }
 
+  /// CUSTOMIZE STRATEGY
+  /// we only give the default pickup strategies here, including:
+  /// 1. random add storage orders;
+  /// 2. judge file size and free space from local ipfs repo;
   /**
-   * Should pull decided from chain-side:
-   * 1. Replica is full
-   * 2. Group duplication
-   * @param cid File hash
-   * @returns pull it or not
+   * Add or ignore to pulling queue by a given cid
+   * @param t Task
+   * @returns if can pick
    */
-  private async shouldPull(cid: string): Promise<boolean> {
-    // If replicas already reach the limit or file not exist
-    if (await this.isReplicaFullOrFileNotExist(cid)) {
+  private async shouldPull(t: Task): Promise<boolean> {
+    // Probability filtering
+    if (!(await this.probabilityFilter())) {
+      logger.info('  ↪  🙅  Probability filter works, just passed.');
       return false;
     }
 
-    // Whether this guy is member and its his turn to pick file
-    if (!(await this.isMyTurn(cid))) {
+    // Whether is my turn to pickup file
+    if (!(await this.isMyTurn(t.cid))) {
       logger.info('  ↪  🙅  Not my turn, just passed.');
+      return false;
+    }
+
+    // If replicas already reach the limit or file not exist
+    if (await this.isReplicaFullOrFileNotExist(t.cid)) {
+      return false;
+    }
+
+    // Get and judge repo can take it, make sure the free can take double file
+    const free = await this.freeSpace();
+    // If free < t.size * 2.2, 0.2 for the extra sealed size
+    if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize * 2.2)) {
+      logger.warn(
+        `  ↪ ⚠️  Free space not enough ${free} < ${t.size}*2.2 - ${this.ipfsQueue.allFileSize}*2.2`
+      );
       return false;
     }
 
@@ -369,8 +383,6 @@ export default class DecisionEngine {
       cid
     );
 
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
-
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
         `  ↪ ⚠️  File replica already full with ${usedInfo.groups.length}`
@@ -386,7 +398,37 @@ export default class DecisionEngine {
   }
 
   /**
-   * Judge if is member can pick the file
+   * Probability filtering
+   * @returns Whether is to pickup file
+   */
+  private async probabilityFilter(): Promise<boolean> {
+    // Base probability
+    let pTake = 0.0;
+    if (this.allNodeCount === 0) {
+      pTake = 0.0;
+    } else if (this.allNodeCount === -1) {
+      pTake = 0.0;
+    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2000) {
+      pTake = 100.0 / this.allNodeCount;
+    } else if (this.allNodeCount > 2000 && this.allNodeCount <= 5000) {
+      pTake = 0.05;
+    } else {
+      pTake = 250 / this.allNodeCount;
+    }
+
+    if (
+      this.nodeId === consts.MEMBER &&
+      this.groupOwner &&
+      this.members.length > 0
+    ) {
+      pTake = pTake * this.members.length;
+    }
+
+    return pTake > rdm(this.chainAccount);
+  }
+
+  /**
+   * Judge if is node can pick the file
    * @param cid File hash
    * @returns Whether is my turn to pickup file
    */
