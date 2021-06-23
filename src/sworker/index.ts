@@ -16,6 +16,30 @@ export default class SworkerApi {
 
   /// WRITE methods
   /**
+   * End file by cid
+   * @param cid ipfs cid
+   * @returns End success or failed
+   * @throws sWorker api error | timeout
+   */
+  async sealEnd(cid: string): Promise<boolean> {
+    try {
+      const res = await this.sworker.post(
+        '/storage/seal_end',
+        JSON.stringify({cid: cid})
+      );
+
+      logger.info(
+        `  ↪ 💖  Call sWorker seal end, response: ${inspect(res.data)}`
+      );
+
+      return res.status === 200;
+    } catch (e) {
+      logger.warn(`Ending file ${cid} timeout or error: ${e.toString()}`);
+      return false;
+    }
+  }
+
+  /**
    * Delete file by cid
    * @param cid ipfs cid
    * @returns delete success or failed

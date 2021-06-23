@@ -2,11 +2,11 @@ import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT} from '../queue';
+import TaskQueue, {BT, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {getRandSec, gigaBytesToBytes, consts, lettersToNum} from '../util';
+import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
 import {MaxQueueLength} from '../util/consts';
@@ -24,10 +24,14 @@ export default class DecisionEngine {
   private readonly sworkerApi: SworkerApi;
   private readonly nodeId: string;
   private groupOwner: string | null;
+  private chainAccount: string;
+  private allNodeCount: number;
+  private ipfsQueue: IPFSQueue;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
   private pullingQueue: TaskQueue<Task>;
   private currentBn: number;
+  private pullCount: number;
 
   constructor(
     chainAddr: string,
@@ -42,11 +46,17 @@ export default class DecisionEngine {
     this.ipfsApi = new IpfsApi(ipfsAddr, ito);
     this.sworkerApi = new SworkerApi(sworkerAddr, sto);
     this.nodeId = nodeId;
+    this.chainAccount = chainAccount;
+    this.allNodeCount = -1;
+    this.pullCount = 0;
 
-    // MaxQueueLength is 50 and Expired with 1200 blocks(1h)
     this.pullingQueue = new TaskQueue<Task>(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
+    );
+    this.ipfsQueue = new IPFSQueue(
+      consts.IPFSFilesMaxSize,
+      consts.IPFSQueueLimits
     );
 
     // Init the current block number
@@ -80,7 +90,7 @@ export default class DecisionEngine {
 
       logger.info(`⛓  Got new block ${bn}(${bh})`);
 
-      // 3. Update current block number
+      // 3. Update current block number and information
       this.currentBn = bn;
 
       // 4. If the node identity is member, wait for it to join group
@@ -152,6 +162,7 @@ export default class DecisionEngine {
 
       // 8. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
+      logger.info(`⛓  Deal new block ${bn}(${bh}) end`);
     };
 
     return await this.crustApi.subscribeNewHeads(addPullings);
@@ -167,52 +178,80 @@ export default class DecisionEngine {
     const randSec = getRandSec(20);
     // Call IPFS pulling every ${randSec}
     return cron.schedule(`${randSec} * * * * *`, async () => {
-      const oldPts: Task[] = this.pullingQueue.tasks;
-      const failedPts: Task[] = [];
+      try {
+        logger.info('⏳  Checking pulling queue ...');
+        this.pullCount++;
+        const oldPts: Task[] = this.pullingQueue.tasks;
+        const failedPts: Task[] = [];
 
-      // 0. Pop all pulling queue
-      this.pullingQueue.tasks = [];
+        // 0. Pop all pulling queue and upgrade node count
+        this.pullingQueue.tasks = [];
 
-      logger.info('⏳  Checking pulling queue ...');
-      logger.info(
-        `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
-      );
+        if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
+          this.allNodeCount = await this.crustApi.getAllNodeCount();
+        }
 
-      // 1. Loop pulling tasks
-      for (const pt of oldPts) {
-        // 2. If join pullings and start puling in ipfs
-        if (await this.shouldPull(pt)) {
-          logger.info(
-            `  ↪ 🗳  Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
-          );
+        logger.info(
+          `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
+        );
+        logger.info(
+          `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
+        );
 
-          // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 100(kB/s) * 1000(ms))
-          // (baseSpeedReference: 100kB/s)
-          const to = consts.BasePinTimeout + (pt.size / 1024 / 100) * 1000;
-
-          // Async pulling
-          // TODO: add thread limitation
-          await this.ipfsApi
-            .pin(pt.cid, to)
-            .then(pinRst => {
-              if (!pinRst) {
-                // a. Pin error with
-                logger.error(`  ↪ 💥  Pin ${pt.cid} failed`);
-                failedPts.push(pt);
-              } else {
-                // b. Pin successfully
-                logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
-              }
-            })
-            .catch(err => {
-              // c. Just drop it as 💩
-              logger.error(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+        // 1. Loop pulling tasks
+        for (const pt of oldPts) {
+          // 2. If join pullings and start puling in ipfs
+          if (await this.shouldPull(pt)) {
+            // Q length >= 10 drop it to failed pts
+            if (!this.ipfsQueue.push(pt.size)) {
               failedPts.push(pt);
-            });
+              continue;
+            }
+
+            logger.info(
+              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
+                pt
+              )}, pulling from ipfs`
+            );
+
+            // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
+            // (baseSpeedReference: 100kB/s)
+            const to = consts.BasePinTimeout + (pt.size / 1024 / 200) * 1000;
+
+            // Async pulling
+            this.ipfsApi
+              .pin(pt.cid, to)
+              .then(pinRst => {
+                if (!pinRst) {
+                  // a. Pin error with
+                  logger.warn(`  ↪ 💥  Pin ${pt.cid} failed`);
+                  this.sworkerApi.sealEnd(pt.cid);
+                } else {
+                  // b. Pin successfully
+                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                }
+              })
+              .catch(err => {
+                // c. Just drop it as 💩
+                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
+                this.sworkerApi.sealEnd(pt.cid);
+              })
+              .finally(() => {
+                this.ipfsQueue.pop(pt.size);
+              });
+          }
         }
 
         // Push back failed tasks
-        this.pullingQueue.tasks.concat(failedPts);
+        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
+        logger.info('⏳  Checking pulling queue end');
+      } catch (err) {
+        logger.error(
+          `  ↪ 💥  Checking pulling queue error, detail with ${err}`
+        );
       }
     });
   }
@@ -228,7 +267,7 @@ export default class DecisionEngine {
    */
   private async shouldPull(t: Task): Promise<boolean> {
     try {
-      // 1. Get and judge file size is match
+      // Get and judge file size is match
       // TODO: Ideally, we should compare the REAL file size(from ipfs) and
       // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
       // so we choose to use on-chain size in the default strategy
@@ -242,11 +281,25 @@ export default class DecisionEngine {
       // }
       const size = t.size;
 
-      // 2. Get and judge repo can take it, make sure the free can take double file
+      // Probability filtering
+      if (!(await this.probabilityFilter())) {
+        logger.info('  ↪  🙅  Probability filter works, just passed.');
+        return false;
+      }
+
+      // Whether is my turn to pickup file
+      if (!(await this.isMyTurn(t.cid))) {
+        logger.info('  ↪  🙅  Not my turn, just passed.');
+        return false;
+      }
+
+      // Get and judge repo can take it, make sure the free can take double file
       const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
-      if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
+      if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize)) {
+        logger.warn(
+          `  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2 - ${this.ipfsQueue.allFileSize}`
+        );
         return false;
       } else if (sysFree < consts.SysMinFreeSpace) {
         logger.warn(
@@ -255,25 +308,19 @@ export default class DecisionEngine {
         return false;
       }
 
-      // 3. Judge if it should pull from chain-side based on:
+      // Judge if it should pull from chain-side based on:
       // * 1. Replica is full
       // * 2. Group duplication
       // If replicas already reach the limit or file not exist
       if (await this.isReplicaFullOrFileNotExist(t.cid)) {
         return false;
       }
-
-      // Whether this guy is member and its his turn to pick file
-      if (!(await this.isMyTurn(t.cid))) {
-        logger.info('  ↪  🙅  Not my turn, just passed.');
-        return false;
-      }
-
-      return true;
     } catch (err) {
       logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
+
+    return true;
   }
 
   /**
@@ -286,8 +333,6 @@ export default class DecisionEngine {
     const usedInfo: UsedInfo | null = await this.crustApi.maybeGetFileUsedInfo(
       cid
     );
-
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
 
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
@@ -304,7 +349,35 @@ export default class DecisionEngine {
   }
 
   /**
-   * Judge if is member can pick the file
+   * Probability filtering
+   * @returns Whether is to pickup file
+   */
+  private async probabilityFilter(): Promise<boolean> {
+    // Base probability
+    let pTake = 0.0;
+    if (this.allNodeCount === 0 || this.allNodeCount === -1) {
+      pTake = 0.0;
+    } else if (this.allNodeCount > 0 && this.allNodeCount <= 2000) {
+      pTake = 100.0 / this.allNodeCount;
+    } else if (this.allNodeCount > 2000 && this.allNodeCount <= 5000) {
+      pTake = 0.05;
+    } else {
+      pTake = 250 / this.allNodeCount;
+    }
+
+    if (
+      this.nodeId === consts.MEMBER &&
+      this.groupOwner &&
+      this.members.length > 0
+    ) {
+      pTake = pTake * this.members.length;
+    }
+
+    return pTake > rdm(this.chainAccount);
+  }
+
+  /**
+   * Judge if is node can pick the file
    * @param cid File hash
    * @returns Whether is my turn to pickup file
    */
