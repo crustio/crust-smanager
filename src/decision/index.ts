@@ -236,7 +236,7 @@ export default class DecisionEngine {
               })
               .catch(err => {
                 // c. Just drop it as 💩
-                const errS: string = err;
+                const errS = new String(err);
                 logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${errS}`);
                 if (errS.indexOf('TimeoutError') !== -1) {
                   this.sworkerApi.sealEnd(pt.cid);

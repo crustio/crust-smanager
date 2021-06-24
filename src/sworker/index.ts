@@ -58,7 +58,7 @@ export default class SworkerApi {
 
       return res.status === 200;
     } catch (e) {
-      logger.error(`Deleting file ${cid} timeout or error: ${e.toString()}`);
+      logger.warn(`Deleting file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -83,7 +83,7 @@ export default class SworkerApi {
 
       return [0, 0];
     } catch (e) {
-      logger.error(`Get free space from sWorker failed: ${e}`);
+      logger.warn(`Get free space from sWorker failed: ${e}`);
       return [0, 0];
     }
   }
