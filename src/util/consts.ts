@@ -11,7 +11,7 @@ export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 export const MaxQueueLength = 500;
 
 // IPFS Queue Limits
-export const IPFSQueueLimits = [12, 36];
+export const IPFSQueueLimits = [20, 100];
 
 // IPFS different files' max size: 5GB
 export const IPFSFilesMaxSize = [1024 * 1024 * 1024 * 5];
