@@ -2,7 +2,7 @@ import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT, IPFSQueue} from '../queue';
+import TaskQueue, {Task, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
@@ -10,15 +10,6 @@ import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
 import {MaxQueueLength, PullQueueDealLength} from '../util/consts';
-
-interface Task extends BT {
-  // The ipfs cid value
-  cid: string;
-  // Object size
-  size: number;
-  // Tips
-  tips: number;
-}
 
 export default class DecisionEngine {
   private readonly crustApi: CrustApi;
@@ -31,7 +22,7 @@ export default class DecisionEngine {
   private ipfsQueue: IPFSQueue;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
-  private pullingQueue: TaskQueue<Task>;
+  private pullingQueue: TaskQueue;
   private currentBn: number;
   private pullCount: number;
 
@@ -52,7 +43,7 @@ export default class DecisionEngine {
     this.allNodeCount = -1;
     this.pullCount = 0;
 
-    this.pullingQueue = new TaskQueue<Task>(
+    this.pullingQueue = new TaskQueue(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
     );
@@ -136,6 +127,7 @@ export default class DecisionEngine {
           bn: bn,
           size: newFile.size,
           tips: newFile.tips,
+          passPf: false,
         };
 
         if (nt.cid.length !== 46 || nt.cid.substr(0, 2) !== 'Qm') {
@@ -199,14 +191,26 @@ export default class DecisionEngine {
         logger.info(
           `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
-        
-        for (let index = 0; index < Math.min(dealLen, PullQueueDealLength); index++) {
+
+        const [free, sysFree] = await this.freeSpace();
+        this.pullingQueue.sort();
+        for (
+          let index = 0;
+          index < Math.min(dealLen, PullQueueDealLength);
+          index++
+        ) {
           const pt = this.pullingQueue.pop();
-          if (pt == undefined) {
+          if (pt === undefined) {
             break;
           }
 
-          if (await this.shouldPull(pt)) {
+          if (!pt.passPf && !(await this.probabilityFilter())) {
+            logger.info('  ↪  🙅  Probability filter works, just passed.');
+            continue;
+          }
+          pt.passPf = true;
+
+          if (await this.shouldPull(pt, free, sysFree)) {
             // Q length >= 10 drop it to failed pts
             if (!this.ipfsQueue.push(pt.size)) {
               this.pullingQueue.push(pt);
@@ -266,7 +270,11 @@ export default class DecisionEngine {
    * @param t Task
    * @returns if can pick
    */
-  private async shouldPull(t: Task): Promise<boolean> {
+  private async shouldPull(
+    t: Task,
+    free: BigNumber,
+    sysFree: number
+  ): Promise<boolean> {
     try {
       // Get and judge file size is match
       // TODO: Ideally, we should compare the REAL file size(from ipfs) and
@@ -282,12 +290,6 @@ export default class DecisionEngine {
       // }
       const size = t.size;
 
-      // Probability filtering
-      if (!(await this.probabilityFilter())) {
-        logger.info('  ↪  🙅  Probability filter works, just passed.');
-        return false;
-      }
-
       // Whether is my turn to pickup file
       if (!(await this.isMyTurn(t.cid))) {
         logger.info('  ↪  🙅  Not my turn, just passed.');
@@ -295,7 +297,6 @@ export default class DecisionEngine {
       }
 
       // Get and judge repo can take it, make sure the free can take double file
-      const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize)) {
         logger.warn(
