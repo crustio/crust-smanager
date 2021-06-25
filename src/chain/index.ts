@@ -10,6 +10,7 @@ import {SLOT_LENGTH} from '../util/consts';
 export interface FileInfo {
   cid: string;
   size: number;
+  tips: number;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
@@ -263,6 +264,7 @@ export default class CrustApi {
     return {
       cid: hexToString(exData.cid),
       size: exData.reported_file_size,
+      tips: exData.tips,
     };
   }
 }

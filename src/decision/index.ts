@@ -16,6 +16,8 @@ interface Task extends BT {
   cid: string;
   // Object size
   size: number;
+  // Tips
+  tips: number;
 }
 
 export default class DecisionEngine {
@@ -133,6 +135,7 @@ export default class DecisionEngine {
           cid: newFile.cid,
           bn: bn,
           size: newFile.size,
+          tips: newFile.tips,
         };
 
         if (nt.cid.length !== 46 || nt.cid.substr(0, 2) !== 'Qm') {
@@ -206,7 +209,7 @@ export default class DecisionEngine {
           if (await this.shouldPull(pt)) {
             // Q length >= 10 drop it to failed pts
             if (!this.ipfsQueue.push(pt.size)) {
-              this.pullingQueue.tasks.push(pt);
+              this.pullingQueue.push(pt);
               continue;
             }
 
