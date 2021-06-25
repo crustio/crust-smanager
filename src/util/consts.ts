@@ -13,7 +13,7 @@ export const SysMinFreeSpace = 10; // 10 gigabytes
 export const MaxQueueLength = 500;
 
 // IPFS Queue Limits
-export const IPFSQueueLimits = [6, 10];
+export const IPFSQueueLimits = [100, 200];
 
 // IPFS different files' max size: 5GB
 export const IPFSFilesMaxSize = [1024 * 1024 * 1024 * 5];

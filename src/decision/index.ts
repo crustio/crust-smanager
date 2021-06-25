@@ -182,18 +182,13 @@ export default class DecisionEngine {
       try {
         logger.info('⏳  Checking pulling queue ...');
         this.pullCount++;
-        const oldPts: Task[] = this.pullingQueue.tasks;
-        const failedPts: Task[] = [];
-
-        // 0. Pop all pulling queue and upgrade node count
-        this.pullingQueue.tasks = [];
-
         if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
           this.allNodeCount = await this.crustApi.getAllNodeCount();
         }
+        const dealLen = this.pullingQueue.tasks.length;
 
         logger.info(
-          `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+          `  ↪ 📨  Pulling queue length: ${dealLen}/${MaxQueueLength}`
         );
         logger.info(
           `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
@@ -201,14 +196,17 @@ export default class DecisionEngine {
         logger.info(
           `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
+        
+        for (let index = 0; index < dealLen; index++) {
+          const pt = this.pullingQueue.pop();
+          if (pt == undefined) {
+            break;
+          }
 
-        // 1. Loop pulling tasks
-        for (const pt of oldPts) {
-          // 2. If join pullings and start puling in ipfs
           if (await this.shouldPull(pt)) {
             // Q length >= 10 drop it to failed pts
             if (!this.ipfsQueue.push(pt.size)) {
-              failedPts.push(pt);
+              this.pullingQueue.tasks.push(pt);
               continue;
             }
 
@@ -219,7 +217,7 @@ export default class DecisionEngine {
             );
 
             // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
-            // (baseSpeedReference: 100kB/s)
+            // (baseSpeedReference: 200kB/s)
             const to = consts.BasePinTimeout + (pt.size / 1024 / 200) * 1000;
 
             // Async pulling
@@ -247,9 +245,6 @@ export default class DecisionEngine {
               });
           }
         }
-
-        // Push back failed tasks
-        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
         logger.info('⏳  Checking pulling queue end');
       } catch (err) {
         logger.error(
