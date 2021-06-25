@@ -10,7 +10,10 @@ export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 export const SysMinFreeSpace = 10; // 10 gigabytes
 
 // Pulling/Sealing Queue
-export const MaxQueueLength = 500;
+export const MaxQueueLength = 5000;
+
+//  Pull Queue Deal Max Length
+export const PullQueueDealLength = 200;
 
 // IPFS Queue Limits
 export const IPFSQueueLimits = [100, 200];

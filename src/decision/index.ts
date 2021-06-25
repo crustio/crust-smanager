@@ -9,7 +9,7 @@ import {logger} from '../log';
 import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength} from '../util/consts';
+import {MaxQueueLength, PullQueueDealLength} from '../util/consts';
 
 interface Task extends BT {
   // The ipfs cid value
@@ -197,7 +197,7 @@ export default class DecisionEngine {
           `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
         
-        for (let index = 0; index < dealLen; index++) {
+        for (let index = 0; index < Math.min(dealLen, PullQueueDealLength); index++) {
           const pt = this.pullingQueue.pop();
           if (pt == undefined) {
             break;
