@@ -11,10 +11,11 @@ import BN from 'bn.js';
 export interface FileInfo {
   cid: string;
   size: number;
-  tips: number;
+  price: number;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
+export type FileInfoChain = typeof crustTypes.market.types.FileInfo;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
@@ -205,7 +206,10 @@ export default class CrustApi {
           const ex = exs[exIdx];
 
           // b. Parse new file, continue with parsing error
-          newFiles.push(this.parseFileInfo(ex));
+          const fi = await this.parseFileInfo(ex);
+          if (fi !== null) {
+            newFiles.push(fi);
+          }
         } else if (method === 'CalculateSuccess') {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
@@ -237,12 +241,27 @@ export default class CrustApi {
    * @throws ApiPromise error or type conversing error
    */
   async maybeGetFileUsedInfo(cid: string): Promise<UsedInfo | null> {
-    await this.withApiReady();
-
     try {
       // Should be like [fileInfo, usedInfo] or null
       const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
       return fileUsedInfo ? fileUsedInfo[1] : null;
+    } catch (e) {
+      logger.error(`Get file/used info error: ${e}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get file info from chain by cid
+   * @param cid Ipfs file cid
+   * @returns Option<FileInfoChain>
+   * @throws ApiPromise error or type conversing error
+   */
+  async maybeGetFileInfoChain(cid: string): Promise<FileInfoChain | null> {
+    try {
+      // Should be like [fileInfo, usedInfo] or null
+      const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
+      return fileUsedInfo ? fileUsedInfo[0] : null;
     } catch (e) {
       logger.error(`Get file/used info error: ${e}`);
       return null;
@@ -260,13 +279,20 @@ export default class CrustApi {
     }
   }
 
-  private parseFileInfo(ex: Extrinsic): FileInfo {
+  private async parseFileInfo(ex: Extrinsic): Promise<FileInfo | null> {
     const exData = parseObj(ex.method).args;
-    return {
-      cid: hexToString(exData.cid),
-      size: exData.reported_file_size,
-      // tips < 0.000001 will be zero
-      tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
-    };
+    const cid = hexToString(exData.cid);
+    const fic = await this.maybeGetFileInfoChain(cid);
+    if (fic !== null) {
+      const price = new BN(Number(fic).toString())
+        .div(new BN(Number(exData.reported_file_size).toString()))
+        .toNumber();
+      return {
+        cid: hexToString(exData.cid),
+        size: exData.reported_file_size,
+        price: price,
+      };
+    }
+    return null;
   }
 }

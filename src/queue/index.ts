@@ -11,8 +11,8 @@ export interface Task extends BT {
   cid: string;
   // Object size
   size: number;
-  // Tips
-  tips: number;
+  // Price
+  price: number;
   // Pass probability filter
   passPf: boolean;
 }
@@ -40,12 +40,12 @@ export default class TaskQueue {
     return this._tasks;
   }
 
-   /**
+  /**
    * Sort tasks
    */
-    sort() {
-      this.tasks.sort((a: Task, b: Task) => b.tips - a.tips);
-    }
+  sort() {
+    this.tasks.sort((a: Task, b: Task) => b.price - a.price);
+  }
 
   /**
    * Push an new task
