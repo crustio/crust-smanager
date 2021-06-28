@@ -2,21 +2,14 @@ import * as cron from 'node-cron';
 import * as _ from 'lodash';
 // eslint-disable-next-line node/no-extraneous-import
 import {Header} from '@polkadot/types/interfaces';
-import TaskQueue, {BT, IPFSQueue} from '../queue';
+import TaskQueue, {Task, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
 import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength} from '../util/consts';
-
-interface Task extends BT {
-  // The ipfs cid value
-  cid: string;
-  // Object size
-  size: number;
-}
+import {MaxQueueLength, PullQueueDealLength} from '../util/consts';
 
 export default class DecisionEngine {
   private readonly crustApi: CrustApi;
@@ -29,7 +22,7 @@ export default class DecisionEngine {
   private ipfsQueue: IPFSQueue;
   private members: Array<string>;
   private readonly locker: Map<string, boolean>; // The task lock
-  private pullingQueue: TaskQueue<Task>;
+  private pullingQueue: TaskQueue;
   private currentBn: number;
   private pullCount: number;
 
@@ -50,7 +43,7 @@ export default class DecisionEngine {
     this.allNodeCount = -1;
     this.pullCount = 0;
 
-    this.pullingQueue = new TaskQueue<Task>(
+    this.pullingQueue = new TaskQueue(
       consts.MaxQueueLength,
       consts.ExpiredQueueBlocks
     );
@@ -133,6 +126,8 @@ export default class DecisionEngine {
           cid: newFile.cid,
           bn: bn,
           size: newFile.size,
+          tips: newFile.tips,
+          passPf: false,
         };
 
         if (nt.cid.length !== 46 || nt.cid.substr(0, 2) !== 'Qm') {
@@ -154,10 +149,11 @@ export default class DecisionEngine {
       // 7. If got closed files, try to delete it by calling sWorker
       for (const closedFileCid of closedFiles) {
         logger.info(`  ↪ 🗑  Try to delete file ${closedFileCid} from sWorker`);
-        const deleted = await this.sworkerApi.delete(closedFileCid);
-        if (deleted) {
-          logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
-        }
+        this.sworkerApi.delete(closedFileCid).then(deleted => {
+          if (deleted) {
+            logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
+          }
+        });
       }
 
       // 8. Check and clean outdated tasks
@@ -181,18 +177,13 @@ export default class DecisionEngine {
       try {
         logger.info('⏳  Checking pulling queue ...');
         this.pullCount++;
-        const oldPts: Task[] = this.pullingQueue.tasks;
-        const failedPts: Task[] = [];
-
-        // 0. Pop all pulling queue and upgrade node count
-        this.pullingQueue.tasks = [];
-
         if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
           this.allNodeCount = await this.crustApi.getAllNodeCount();
         }
+        const dealLen = this.pullingQueue.tasks.length;
 
         logger.info(
-          `  ↪ 📨  Pulling queue length: ${oldPts.length}/${MaxQueueLength}`
+          `  ↪ 📨  Pulling queue length: ${dealLen}/${MaxQueueLength}`
         );
         logger.info(
           `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
@@ -201,13 +192,28 @@ export default class DecisionEngine {
           `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
 
-        // 1. Loop pulling tasks
-        for (const pt of oldPts) {
-          // 2. If join pullings and start puling in ipfs
-          if (await this.shouldPull(pt)) {
+        const [free, sysFree] = await this.freeSpace();
+        this.pullingQueue.sort();
+        for (
+          let index = 0;
+          index < Math.min(dealLen, PullQueueDealLength);
+          index++
+        ) {
+          const pt = this.pullingQueue.pop();
+          if (pt === undefined) {
+            break;
+          }
+
+          if (!pt.passPf && !(await this.probabilityFilter())) {
+            logger.info('  ↪  🙅  Probability filter works, just passed.');
+            continue;
+          }
+          pt.passPf = true;
+
+          if (await this.shouldPull(pt, free, sysFree)) {
             // Q length >= 10 drop it to failed pts
             if (!this.ipfsQueue.push(pt.size)) {
-              failedPts.push(pt);
+              this.pullingQueue.push(pt);
               continue;
             }
 
@@ -218,7 +224,7 @@ export default class DecisionEngine {
             );
 
             // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
-            // (baseSpeedReference: 100kB/s)
+            // (baseSpeedReference: 200kB/s)
             const to = consts.BasePinTimeout + (pt.size / 1024 / 200) * 1000;
 
             // Async pulling
@@ -228,7 +234,6 @@ export default class DecisionEngine {
                 if (!pinRst) {
                   // a. Pin error with
                   logger.warn(`  ↪ 💥  Pin ${pt.cid} failed`);
-                  this.sworkerApi.sealEnd(pt.cid);
                 } else {
                   // b. Pin successfully
                   logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
@@ -236,17 +241,17 @@ export default class DecisionEngine {
               })
               .catch(err => {
                 // c. Just drop it as 💩
-                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${err}`);
-                this.sworkerApi.sealEnd(pt.cid);
+                const errS = new String(err);
+                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${errS}`);
+                if (errS.indexOf('TimeoutError') !== -1) {
+                  this.sworkerApi.sealEnd(pt.cid);
+                }
               })
               .finally(() => {
                 this.ipfsQueue.pop(pt.size);
               });
           }
         }
-
-        // Push back failed tasks
-        this.pullingQueue.tasks = this.pullingQueue.tasks.concat(failedPts);
         logger.info('⏳  Checking pulling queue end');
       } catch (err) {
         logger.error(
@@ -265,7 +270,11 @@ export default class DecisionEngine {
    * @param t Task
    * @returns if can pick
    */
-  private async shouldPull(t: Task): Promise<boolean> {
+  private async shouldPull(
+    t: Task,
+    free: BigNumber,
+    sysFree: number
+  ): Promise<boolean> {
     try {
       // Get and judge file size is match
       // TODO: Ideally, we should compare the REAL file size(from ipfs) and
@@ -281,12 +290,6 @@ export default class DecisionEngine {
       // }
       const size = t.size;
 
-      // Probability filtering
-      if (!(await this.probabilityFilter())) {
-        logger.info('  ↪  🙅  Probability filter works, just passed.');
-        return false;
-      }
-
       // Whether is my turn to pickup file
       if (!(await this.isMyTurn(t.cid))) {
         logger.info('  ↪  🙅  Not my turn, just passed.');
@@ -294,7 +297,6 @@ export default class DecisionEngine {
       }
 
       // Get and judge repo can take it, make sure the free can take double file
-      const [free, sysFree] = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize)) {
         logger.warn(
