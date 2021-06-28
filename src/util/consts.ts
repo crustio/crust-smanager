@@ -8,10 +8,13 @@ export const MaxFileReplicas = 200;
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
 // Pulling/Sealing Queue
-export const MaxQueueLength = 500;
+export const MaxQueueLength = 5000;
+
+//  Pull Queue Deal Max Length
+export const PullQueueDealLength = 200;
 
 // IPFS Queue Limits
-export const IPFSQueueLimits = [20, 100];
+export const IPFSQueueLimits = [250, 500];
 
 // IPFS different files' max size: 5GB
 export const IPFSFilesMaxSize = [1024 * 1024 * 1024 * 5];

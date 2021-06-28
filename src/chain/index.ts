@@ -6,10 +6,12 @@ import {hexToString, parseObj, sleep} from '../util';
 import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
 import _ from 'lodash';
 import {SLOT_LENGTH} from '../util/consts';
+import BN from 'bn.js';
 
 export interface FileInfo {
   cid: string;
   size: number;
+  tips: number;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
@@ -263,6 +265,8 @@ export default class CrustApi {
     return {
       cid: hexToString(exData.cid),
       size: exData.reported_file_size,
+      // tips < 0.000001 will be zero
+      tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
     };
   }
 }

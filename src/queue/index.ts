@@ -6,34 +6,52 @@ export interface BT {
   bn: number;
 }
 
+export interface Task extends BT {
+  // The ipfs cid value
+  cid: string;
+  // Object size
+  size: number;
+  // Tips
+  tips: number;
+  // Pass probability filter
+  passPf: boolean;
+}
+
 /**
  * Queue interact with cache
  * Provides the management of pending tasks
  */
-export default class TaskQueue<T extends BT> {
-  private _tasks: T[];
+export default class TaskQueue {
+  private _tasks: Task[];
   private readonly maxLength: number; // queue length
   private readonly maxDuration: number; // task outdated time
 
   constructor(ml: number, md: number) {
-    this._tasks = new Array<T>();
+    this._tasks = new Array<Task>();
     this.maxLength = ml;
     this.maxDuration = md;
   }
 
-  set tasks(ts: T[]) {
+  set tasks(ts: Task[]) {
     this._tasks = ts;
   }
 
-  get tasks(): T[] {
+  get tasks(): Task[] {
     return this._tasks;
   }
+
+   /**
+   * Sort tasks
+   */
+    sort() {
+      this.tasks.sort((a: Task, b: Task) => b.tips - a.tips);
+    }
 
   /**
    * Push an new task
    * @param nt: new task
    */
-  push(nt: T): boolean {
+  push(nt: Task): boolean {
     if (this.tasks.length >= this.maxLength) return false;
     this.tasks.push(nt);
     return true;
@@ -42,7 +60,7 @@ export default class TaskQueue<T extends BT> {
   /**
    * Pop the first task
    */
-  pop(): T | undefined {
+  pop(): Task | undefined {
     if (_.isEmpty(this.tasks)) return undefined;
     return this.tasks.shift();
   }
