@@ -131,7 +131,7 @@ export default class DecisionEngine {
           cid: newFile.cid,
           bn: bn,
           size: newFile.size,
-          price: newFile.price,
+          tips: newFile.tips,
           passPf: false,
         };
 

@@ -11,7 +11,7 @@ import BN from 'bn.js';
 export interface FileInfo {
   cid: string;
   size: number;
-  price: number;
+  tips: number;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
@@ -206,10 +206,7 @@ export default class CrustApi {
           const ex = exs[exIdx];
 
           // b. Parse new file, continue with parsing error
-          const fi = await this.parseFileInfo(ex);
-          if (fi !== null) {
-            newFiles.push(fi);
-          }
+          newFiles.push(await this.parseFileInfo(ex));
         } else if (method === 'CalculateSuccess') {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
@@ -279,20 +276,13 @@ export default class CrustApi {
     }
   }
 
-  private async parseFileInfo(ex: Extrinsic): Promise<FileInfo | null> {
+  private async parseFileInfo(ex: Extrinsic): Promise<FileInfo> {
     const exData = parseObj(ex.method).args;
-    const cid = hexToString(exData.cid);
-    const fic = await this.maybeGetFileInfoChain(cid);
-    if (fic !== null) {
-      const price = new BN(Number(fic).toString())
-        .div(new BN(Number(exData.reported_file_size).toString()))
-        .toNumber();
-      return {
-        cid: hexToString(exData.cid),
-        size: exData.reported_file_size,
-        price: price,
-      };
-    }
-    return null;
+    return {
+      cid: hexToString(exData.cid),
+      size: exData.reported_file_size,
+      // tips < 0.000001 will be zero
+      tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
+    };
   }
 }
