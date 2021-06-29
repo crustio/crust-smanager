@@ -206,7 +206,7 @@ export default class CrustApi {
           const ex = exs[exIdx];
 
           // b. Parse new file, continue with parsing error
-          newFiles.push(await this.parseFileInfo(ex));
+          newFiles.push(this.parseFileInfo(ex));
         } else if (method === 'CalculateSuccess') {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
@@ -276,7 +276,7 @@ export default class CrustApi {
     }
   }
 
-  private async parseFileInfo(ex: Extrinsic): Promise<FileInfo> {
+  private parseFileInfo(ex: Extrinsic): FileInfo {
     const exData = parseObj(ex.method).args;
     return {
       cid: hexToString(exData.cid),
