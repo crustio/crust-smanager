@@ -20,7 +20,7 @@ export const IPFSQueueLimits = [250, 500];
 export const IPFSFilesMaxSize = [1024 * 1024 * 1024 * 5];
 
 // Expired queue duration
-export const ExpiredQueueBlocks = 14400;
+export const ExpiredQueueBlocks = 28800;
 
 // Group Signs
 export const MEMBER = 'member';
