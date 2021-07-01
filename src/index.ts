@@ -30,6 +30,9 @@ try {
   de.subscribePullings().catch(e =>
     logger.error(`💥  Caught pulling queue error: ${e.toString()}`)
   );
+  de.subscribeCheckPendings().catch(e =>
+    logger.error(`💥  Caught check pendings error: ${e.toString()}`)
+  );
 } catch (e) {
   logger.error(`💥  Caught unhandled error ${e.toString()}`);
 }

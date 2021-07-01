@@ -269,6 +269,9 @@ export default class DecisionEngine {
       try {
         logger.info('⏳  Checking pending jobs...');
 
+        const pendings = await this.sworkerApi.pendings();
+        logger.info(`pendings : ${pendings}`)
+
         logger.info('⏳  Checking pending jobs end');
       } catch (err) {
         logger.error(`  ↪ 💥  Checking pending jobs error, detail with ${err}`);

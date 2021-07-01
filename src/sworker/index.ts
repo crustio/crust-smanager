@@ -103,7 +103,6 @@ export default class SworkerApi {
       }
       return undefined;
     } catch (e) {
-      logger.warn(`Get free space from sWorker failed: ${e}`);
       return undefined;
     }
   }
