@@ -87,4 +87,24 @@ export default class SworkerApi {
       return [0, 0];
     }
   }
+
+  /// READ methods
+  /**
+   * Query pendings information
+   * @returns pendings json
+   */
+  async pendings(): Promise<any | undefined> {
+    try {
+      const res = await this.sworker.get('file/info_by_type', {
+        params: {type: 'pending'},
+      });
+      if (res && res.status === 200) {
+        return parseObj(res.data);
+      }
+      return undefined;
+    } catch (e) {
+      logger.warn(`Get free space from sWorker failed: ${e}`);
+      return undefined;
+    }
+  }
 }

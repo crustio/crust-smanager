@@ -25,6 +25,7 @@ export default class DecisionEngine {
   private pullingQueue: TaskQueue;
   private currentBn: number;
   private pullCount: number;
+  private pendingJobs: Map<string, number>;
 
   constructor(
     chainAddr: string,
@@ -61,6 +62,7 @@ export default class DecisionEngine {
     // Groups
     this.groupOwner = null;
     this.members = new Array<string>();
+    this.pendingJobs = new Map<string, number>();
   }
 
   /**
@@ -257,6 +259,19 @@ export default class DecisionEngine {
         logger.error(
           `  ↪ 💥  Checking pulling queue error, detail with ${err}`
         );
+      }
+    });
+  }
+
+  async subscribeCheckPendings(): Promise<cron.ScheduledTask> {
+    const randMin = getRandSec(40);
+    return cron.schedule(`* ${randMin} * * * *`, async () => {
+      try {
+        logger.info('⏳  Checking pending jobs...');
+
+        logger.info('⏳  Checking pending jobs end');
+      } catch (err) {
+        logger.error(`  ↪ 💥  Checking pending jobs error, detail with ${err}`);
       }
     });
   }
