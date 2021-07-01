@@ -95,9 +95,7 @@ export default class SworkerApi {
    */
   async pendings(): Promise<any | undefined> {
     try {
-      const res = await this.sworker.get('file/info_by_type', {
-        params: {type: 'pending'},
-      });
+      const res = await this.sworker.get('/file/info_by_type?type=pending');
       if (res && res.status === 200) {
         return parseObj(res.data);
       }

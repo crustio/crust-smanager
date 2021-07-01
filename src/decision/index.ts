@@ -265,12 +265,44 @@ export default class DecisionEngine {
 
   async subscribeCheckPendings(): Promise<cron.ScheduledTask> {
     const randMin = getRandSec(40);
-    return cron.schedule(`* ${randMin} * * * *`, async () => {
+    return cron.schedule(`0 ${randMin} * * * *`, async () => {
       try {
         logger.info('⏳  Checking pending jobs...');
 
         const pendings = await this.sworkerApi.pendings();
         logger.info(`pendings : ${pendings}`)
+        logger.info(`old pendings : ${pendings}`)
+        
+        // Get new job list
+        var newJobs = new Map<string, number>();
+        for(var key in pendings) {
+          if (!this.pendingJobs.get(key)) {
+            newJobs.set(key, pendings[key]["sealed_size"]);
+          }
+        }
+
+        logger.info(`new job : ${newJobs}`)
+
+        // Remove stopped jobs and finished jobs
+        for (var key in this.pendingJobs) {  
+          const oldJobSize = this.pendingJobs.get(key);
+          const job = pendings[key];
+          if (job) {
+            if (oldJobSize === job["sealed_size"]) {
+              this.pendingJobs.delete(key);
+              this.sworkerApi.delete(key);
+            } else {
+              this.pendingJobs.set(key, job["sealed_size"])
+            }
+          } else {
+            this.pendingJobs.delete(key);
+          }
+        }
+
+        // Push new jobs
+        newJobs.forEach((value, key)=>{
+          this.pendingJobs.set(key, value);
+        })
 
         logger.info('⏳  Checking pending jobs end');
       } catch (err) {
