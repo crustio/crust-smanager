@@ -72,7 +72,7 @@ export default class TaskQueue {
   clear(cbn: number) {
     this.tasks = this.tasks.filter(t => {
       if (cbn - t.bn > this.maxDuration) {
-        logger.info(`🗑  Clear outdated task: ${JSON.stringify(t)}`);
+        logger.info(`🗑 Clear outdated task: ${JSON.stringify(t)}`);
         return false;
       }
       return true;

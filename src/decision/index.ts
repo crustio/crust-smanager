@@ -79,11 +79,11 @@ export default class DecisionEngine {
 
       // 2. Judge if already got the same block
       if (bn === this.currentBn) {
-        logger.warn('⚠️  Found duplicated block');
+        logger.warn('⚠️ Found duplicated block');
         return;
       }
 
-      logger.info(`⛓  Got new block ${bn}(${bh})`);
+      logger.info(`⛓ Got new block ${bn}(${bh})`);
 
       // 3. Update current block number and information
       this.currentBn = bn;
@@ -93,16 +93,16 @@ export default class DecisionEngine {
         const sworkIdentity = await this.crustApi.sworkIdentity();
         if (!sworkIdentity) {
           logger.warn(
-            "⚠️  Can't get swork identity, please wait your sworker to report the frist work report"
+            "⚠️ Can't get swork identity, please wait your sworker to report the frist work report"
           );
           return;
         } else {
           const groupOwner = sworkIdentity.group;
           if (!groupOwner) {
-            logger.warn('⚠️  Wait for the member to join group');
+            logger.warn('⚠️ Wait for the member to join group');
             return;
           } else if (this.crustApi.getChainAccount() === groupOwner) {
-            logger.error("💥  Can't use owner account to configure member");
+            logger.error("💥 Can't use owner account to configure member");
             return;
           }
 
@@ -133,16 +133,12 @@ export default class DecisionEngine {
         };
 
         if (nt.cid.length !== 46 || nt.cid.substr(0, 2) !== 'Qm') {
-          logger.info(
-            `  ↪ ✨  Found illegal file, ignore it ${JSON.stringify(nt)}`
-          );
+          logger.info(`✨ Found illegal file, ignore it ${JSON.stringify(nt)}`);
           continue;
         }
 
         logger.info(
-          `  ↪ ✨  Found new file, adding it to pulling queue ${JSON.stringify(
-            nt
-          )}`
+          `✨ Found new file, adding it to pulling queue ${JSON.stringify(nt)}`
         );
         // Always push into pulling queue
         this.pullingQueue.push(nt);
@@ -150,17 +146,17 @@ export default class DecisionEngine {
 
       // 7. If got closed files, try to delete it by calling sWorker
       for (const closedFileCid of closedFiles) {
-        logger.info(`  ↪ 🗑  Try to delete file ${closedFileCid} from sWorker`);
+        logger.info(`🗑 Try to delete file ${closedFileCid} from sWorker`);
         this.sworkerApi.delete(closedFileCid).then(deleted => {
           if (deleted) {
-            logger.info(`  ↪ 🗑  Delete file(${closedFileCid}) successfully`);
+            logger.info(`🗑 Delete file(${closedFileCid}) successfully`);
           }
         });
       }
 
       // 8. Check and clean outdated tasks
       this.pullingQueue.clear(bn);
-      logger.info(`⛓  Deal new block ${bn}(${bh}) end`);
+      logger.info(`⛓ Deal new block ${bn}(${bh}) end`);
     };
 
     return await this.crustApi.subscribeNewHeads(addPullings);
@@ -177,21 +173,19 @@ export default class DecisionEngine {
     // Call IPFS pulling every ${randSec}
     return cron.schedule(`${randSec} * * * * *`, async () => {
       try {
-        logger.info('⏳  Checking pulling queue ...');
+        logger.info('⏳ Checking pulling queue ...');
         this.pullCount++;
         if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
           this.allNodeCount = await this.crustApi.getAllNodeCount();
         }
         const dealLen = this.pullingQueue.tasks.length;
 
+        logger.info(`📨 Pulling queue length: ${dealLen}/${MaxQueueLength}`);
         logger.info(
-          `  ↪ 📨  Pulling queue length: ${dealLen}/${MaxQueueLength}`
+          `📨 Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
         );
         logger.info(
-          `  ↪ 📨  Ipfs small task count: ${this.ipfsQueue.currentFilesQueueLen[0]}/${this.ipfsQueue.filesQueueLimit[0]}`
-        );
-        logger.info(
-          `  ↪ 📨  Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
+          `📨 Ipfs big task count: ${this.ipfsQueue.currentFilesQueueLen[1]}/${this.ipfsQueue.filesQueueLimit[1]}`
         );
 
         const [free, sysFree] = await this.freeSpace();
@@ -207,7 +201,7 @@ export default class DecisionEngine {
           }
 
           if (!pt.passPf && !(await this.probabilityFilter())) {
-            logger.info('  ↪  🙅  Probability filter works, just passed.');
+            logger.info('🙅 Probability filter works, just passed.');
             continue;
           }
           pt.passPf = true;
@@ -220,9 +214,7 @@ export default class DecisionEngine {
             }
 
             logger.info(
-              `  ↪ 🗳  Pick pulling task ${JSON.stringify(
-                pt
-              )}, pulling from ipfs`
+              `🗳 Pick pulling task ${JSON.stringify(pt)}, pulling from ipfs`
             );
 
             // Dynamic timeout = baseTo + (size(byte) / 1024(kB) / 200(kB/s) * 1000(ms))
@@ -235,16 +227,16 @@ export default class DecisionEngine {
               .then(pinRst => {
                 if (!pinRst) {
                   // a. Pin error with
-                  logger.warn(`  ↪ 💥  Pin ${pt.cid} failed`);
+                  logger.warn(`💥 Pin ${pt.cid} failed`);
                 } else {
                   // b. Pin successfully
-                  logger.info(`  ↪ ✨  Pin ${pt.cid} successfully`);
+                  logger.info(`✨ Pin ${pt.cid} successfully`);
                 }
               })
               .catch(err => {
                 // c. Just drop it as 💩
                 const errS = new String(err);
-                logger.warn(`  ↪ 💥  Pin ${pt.cid} failed with ${errS}`);
+                logger.warn(`💥 Pin ${pt.cid} failed with ${errS}`);
                 if (errS.indexOf('TimeoutError') !== -1) {
                   this.sworkerApi.sealEnd(pt.cid);
                 }
@@ -256,9 +248,7 @@ export default class DecisionEngine {
         }
         logger.info('⏳  Checking pulling queue end');
       } catch (err) {
-        logger.error(
-          `  ↪ 💥  Checking pulling queue error, detail with ${err}`
-        );
+        logger.error(`💥 Checking pulling queue error, detail with ${err}`);
       }
     });
   }
@@ -267,46 +257,45 @@ export default class DecisionEngine {
     const randMin = getRandSec(40);
     return cron.schedule(`0 ${randMin} * * * *`, async () => {
       try {
-        logger.info('⏳  Checking pending jobs...');
-
+        logger.info('⏳ Checking pending jobs...');
         const pendings = await this.sworkerApi.pendings();
-        logger.info(`pendings : ${pendings}`)
-        logger.info(`old pendings : ${pendings}`)
-        
+
         // Get new job list
-        var newJobs = new Map<string, number>();
-        for(var key in pendings) {
-          if (!this.pendingJobs.get(key)) {
-            newJobs.set(key, pendings[key]["sealed_size"]);
+        const newJobs = new Map<string, number>();
+        if (pendings) {
+          for (const key in pendings) {
+            if (!this.pendingJobs.get(key)) {
+              newJobs.set(key, pendings[key]['sealed_size']);
+            }
           }
         }
 
-        logger.info(`new job : ${newJobs}`)
-
         // Remove stopped jobs and finished jobs
-        for (var key in this.pendingJobs) {  
-          const oldJobSize = this.pendingJobs.get(key);
+        this.pendingJobs.forEach((value, key) => {
           const job = pendings[key];
           if (job) {
-            if (oldJobSize === job["sealed_size"]) {
+            if (value === job['sealed_size']) {
+              logger.info(
+                `🙅 Delete deaded jobs key: ${key} size: ${value} newsize: ${job['sealed_size']}`
+              );
               this.pendingJobs.delete(key);
               this.sworkerApi.delete(key);
             } else {
-              this.pendingJobs.set(key, job["sealed_size"])
+              this.pendingJobs.set(key, job['sealed_size']);
             }
           } else {
             this.pendingJobs.delete(key);
           }
-        }
+        });
 
         // Push new jobs
-        newJobs.forEach((value, key)=>{
+        newJobs.forEach((value, key) => {
           this.pendingJobs.set(key, value);
-        })
+        });
 
-        logger.info('⏳  Checking pending jobs end');
+        logger.info('⏳ Checking pending jobs end');
       } catch (err) {
-        logger.error(`  ↪ 💥  Checking pending jobs error, detail with ${err}`);
+        logger.error(`💥 Checking pending jobs error, detail with ${err}`);
       }
     });
   }
@@ -326,23 +315,11 @@ export default class DecisionEngine {
     sysFree: number
   ): Promise<boolean> {
     try {
-      // Get and judge file size is match
-      // TODO: Ideally, we should compare the REAL file size(from ipfs) and
-      // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
-      // so we choose to use on-chain size in the default strategy
-
-      // Ideally code:
-      // const size = await this.ipfsApi.size(t.cid);
-      // logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
-      // if (size !== t.size) {
-      //   logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-      //   // CUSTOMER STRATEGY, can pick or not
-      // }
       const size = t.size;
 
       // Whether is my turn to pickup file
       if (!(await this.isMyTurn(t.cid))) {
-        logger.info('  ↪  🙅  Not my turn, just passed.');
+        logger.info('🙅 Not my turn, just passed.');
         return false;
       }
 
@@ -350,12 +327,12 @@ export default class DecisionEngine {
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2 - this.ipfsQueue.allFileSize)) {
         logger.warn(
-          `  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2 - ${this.ipfsQueue.allFileSize}`
+          `⚠️ Free space not enough ${free} < ${size}*2.2 - ${this.ipfsQueue.allFileSize}`
         );
         return false;
       } else if (sysFree < consts.SysMinFreeSpace) {
         logger.warn(
-          `  ↪ ⚠️  System free space not enough ${sysFree} < ${consts.SysMinFreeSpace}`
+          `⚠️ System free space not enough ${sysFree} < ${consts.SysMinFreeSpace}`
         );
         return false;
       }
@@ -368,7 +345,7 @@ export default class DecisionEngine {
         return false;
       }
     } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
+      logger.error(`💥 Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
 
@@ -388,12 +365,12 @@ export default class DecisionEngine {
 
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
-        `  ↪ ⚠️  File replica already full with ${usedInfo.groups.length}`
+        `⚠️ File replica already full with ${usedInfo.groups.length}`
       );
 
       return true;
     } else if (!usedInfo) {
-      logger.warn(`  ↪ ⚠️  File ${cid} not exist`);
+      logger.warn(`⚠️ File ${cid} not exist`);
       return true;
     }
 
@@ -448,7 +425,7 @@ export default class DecisionEngine {
       if (myIdx !== -1) {
         const cidNum = lettersToNum(cid);
         logger.info(
-          `  ↪  🙋  Group length: ${len}, member index: ${myIdx}, file cid: ${cid}(${cidNum})`
+          `🙋 Group length: ${len}, member index: ${myIdx}, file cid: ${cid}(${cidNum})`
         );
         return cidNum % len === myIdx;
       }

@@ -28,13 +28,8 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker seal end, response: ${inspect(res.data)}`
-      );
-
       return res.status === 200;
     } catch (e) {
-      logger.warn(`Ending file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -52,13 +47,8 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker delete, response: ${inspect(res.data)}`
-      );
-
       return res.status === 200;
     } catch (e) {
-      logger.warn(`Deleting file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }

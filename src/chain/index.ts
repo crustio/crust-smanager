@@ -52,7 +52,7 @@ export default class CrustApi {
   async subscribeNewHeads(handler: (b: Header) => void) {
     // Waiting for API
     while (!(await this.withApiReady())) {
-      logger.info('⛓  Connection broken, waiting for chain running.');
+      logger.info('⛓ Connection broken, waiting for chain running.');
       await sleep(6000); // IMPORTANT: Sequential matters(need give time for create ApiPromise)
       this.initApi(); // Try to recreate api to connect running chain
     }
@@ -60,7 +60,7 @@ export default class CrustApi {
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
       logger.info(
-        `⛓  Chain is synchronizing, current block number ${(
+        `⛓ Chain is synchronizing, current block number ${(
           await this.header()
         ).number.toNumber()}`
       );
@@ -170,7 +170,7 @@ export default class CrustApi {
     try {
       return parseObj(await this.api.query.swork.groups(groupOwner));
     } catch (e) {
-      logger.error(`Get group member error: ${e}`);
+      logger.error(`💥 Get group member error: ${e}`);
       return [];
     }
   }
@@ -225,7 +225,7 @@ export default class CrustApi {
 
       return [newFiles, closedFiles];
     } catch (err) {
-      logger.error(`  ↪ 💥 Parse files error at block(${bh}): ${err}`);
+      logger.error(`💥 Parse files error at block(${bh}): ${err}`);
       return [[], []];
     }
   }
@@ -244,7 +244,7 @@ export default class CrustApi {
       const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
       return fileUsedInfo ? fileUsedInfo[1] : null;
     } catch (e) {
-      logger.error(`Get file/used info error: ${e}`);
+      logger.error(`💥 Get file/used info error: ${e}`);
       return null;
     }
   }
@@ -255,7 +255,7 @@ export default class CrustApi {
       await this.api.isReadyOrError;
       return true;
     } catch (e) {
-      logger.error(`💥  Error connecting with Chain: ${e.toString()}`);
+      logger.error(`💥 Error connecting with Chain: ${e.toString()}`);
       return false;
     }
   }
