@@ -101,13 +101,13 @@ sManager's entry is 3 crob jobs: picking job triggered by chain's new block; pul
 
   // TODO: Get cancellation signal and handle errors?
   de.subscribeNewFiles().catch(e =>
-    logger.error(`💥  Caught pending queue error: ${e.toString()}`)
+    logger.error(`💥 Caught pending queue error: ${e.toString()}`)
   );
   de.subscribePullings().catch(e =>
-    logger.error(`💥  Caught pulling queue error: ${e.toString()}`)
+    logger.error(`💥 Caught pulling queue error: ${e.toString()}`)
   );
   de.subscribeSealings().catch(e =>
-    logger.error(`💥  Caught sealing queue error: ${e.toString()}`)
+    logger.error(`💥 Caught sealing queue error: ${e.toString()}`)
   );
 ```
 
@@ -217,32 +217,20 @@ sManager judged the current free space when trying to pulling file from IPFS and
 ```ts
   private async pickUpPulling(t: Task): Promise<boolean> {
     try {
-      // 1. Get and judge file size is match
-      // TODO: Ideally, we should compare the REAL file size(from ipfs) and
-      // on-chain storage order size, but this is a COST operation which will cause timeout from ipfs,
-      // so we choose to use on-chain size in the default strategy
-
-      // Ideally code:
-      // const size = await this.ipfsApi.size(t.cid);
-      // logger.info(`  ↪ 📂  Got ipfs file size ${t.cid}, size is: ${size}`);
-      // if (size !== t.size) {
-      //   logger.warn(`  ↪ ⚠️  Size not match: ${size} != ${t.size}`);
-      //   // CUSTOMER STRATEGY, can pick or not
-      // }
       const size = t.size;
 
       // 2. Get and judge repo can take it, make sure the free can take double file
       const free = await this.freeSpace();
       // If free < t.size * 2.2, 0.2 for the extra sealed size
       if (free.lte(t.size * 2.2)) {
-        logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${size}*2.2`);
+        logger.warn(`⚠️ Free space not enough ${free} < ${size}*2.2`);
         return false;
       }
 
       // 3. Judge if it should pull from chain-side
       return await this.shouldPull(t.cid);
     } catch (err) {
-      logger.error(`  ↪ 💥  Access ipfs or sWorker error, detail with ${err}`);
+      logger.error(`💥 Access ipfs or sWorker error, detail with ${err}`);
       return false;
     }
   }
@@ -256,7 +244,7 @@ sManager judged the current free space when trying to pulling file from IPFS and
 
     // If free < file size
     if (free.lt(t.size)) {
-      logger.warn(`  ↪ ⚠️  Free space not enough ${free} < ${t.size}`);
+      logger.warn(`⚠️ Free space not enough ${free} < ${t.size}`);
       return false;
     }
 
@@ -280,16 +268,16 @@ sManager will get file's replica info **before pulling file**. When the replica 
       cid
     );
 
-    logger.info(`  ↪ ⛓  Got file info from chain ${JSON.stringify(usedInfo)}`);
+    logger.info(`⛓ Got file info from chain ${JSON.stringify(usedInfo)}`);
 
     if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
       logger.warn(
-        `  ↪ ⚠️  File replica already full with ${usedInfo.groups.length}`
+        `⚠️ File replica already full with ${usedInfo.groups.length}`
       );
 
       return true;
     } else if (!usedInfo) {
-      logger.warn(`  ↪ ⚠️  File ${cid} not exist`);
+      logger.warn(`⚠️ File ${cid} not exist`);
       return true;
     }
 
@@ -322,7 +310,7 @@ Because there is only 1 replica within the same group, so sManager provides the 
       if (myIdx !== -1) {
         const cidNum = lettersToNum(cid);
         logger.info(
-          `  ↪  🙋  Group length: ${len}, member index: ${myIdx}, file cid: ${cid}(${cidNum})`
+          `🙋 Group length: ${len}, member index: ${myIdx}, file cid: ${cid}(${cidNum})`
         );
         return cidNum % len === myIdx;
       }

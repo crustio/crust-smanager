@@ -28,13 +28,8 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker seal end, response: ${inspect(res.data)}`
-      );
-
       return res.status === 200;
     } catch (e) {
-      logger.warn(`Ending file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -52,13 +47,8 @@ export default class SworkerApi {
         JSON.stringify({cid: cid})
       );
 
-      logger.info(
-        `  ↪ 💖  Call sWorker delete, response: ${inspect(res.data)}`
-      );
-
       return res.status === 200;
     } catch (e) {
-      logger.warn(`Deleting file ${cid} timeout or error: ${e.toString()}`);
       return false;
     }
   }
@@ -85,6 +75,23 @@ export default class SworkerApi {
     } catch (e) {
       logger.warn(`Get free space from sWorker failed: ${e}`);
       return [0, 0];
+    }
+  }
+
+  /// READ methods
+  /**
+   * Query pendings information
+   * @returns pendings json
+   */
+  async pendings(): Promise<any | undefined> {
+    try {
+      const res = await this.sworker.get('/file/info_by_type?type=pending');
+      if (res && res.status === 200) {
+        return parseObj(res.data);
+      }
+      return undefined;
+    } catch (e) {
+      return undefined;
     }
   }
 }
