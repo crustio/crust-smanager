@@ -6,10 +6,22 @@ import TaskQueue, {Task, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
 import CrustApi, {FileInfo, UsedInfo} from '../chain';
 import {logger} from '../log';
-import {rdm, gigaBytesToBytes, getRandSec, consts, lettersToNum} from '../util';
+import {
+  rdm,
+  gigaBytesToBytes,
+  getRandSec,
+  consts,
+  lettersToNum,
+  sleep,
+} from '../util';
 import SworkerApi from '../sworker';
 import BigNumber from 'bignumber.js';
-import {MaxQueueLength, PullQueueDealLength} from '../util/consts';
+import {
+  IPFSGCInterval,
+  IPFSGCTimeout,
+  MaxQueueLength,
+  PullQueueDealLength,
+} from '../util/consts';
 
 export default class DecisionEngine {
   private readonly crustApi: CrustApi;
@@ -298,6 +310,20 @@ export default class DecisionEngine {
         logger.error(`💥 Checking pending jobs error, detail with ${err}`);
       }
     });
+  }
+
+  async subscribeIPFSGC() {
+    const x = true;
+    while (x) {
+      try {
+        await sleep(IPFSGCInterval);
+        logger.info('⏳ IPFS GC start');
+        await this.ipfsApi.repoGC(IPFSGCTimeout);
+        logger.info('⏳ IPFS GC end');
+      } catch (err) {
+        logger.warn(`⏳ IPFS GC encounter problem, detail with ${err}`);
+      }
+    }
   }
 
   /// CUSTOMIZE STRATEGY
