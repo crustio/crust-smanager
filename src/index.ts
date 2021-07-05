@@ -33,6 +33,9 @@ try {
   de.subscribeCheckPendings().catch(e =>
     logger.error(`💥 Caught check pendings error: ${e.toString()}`)
   );
+  de.subscribeIPFSGC().catch(e =>
+    logger.error(`💥 Caught ipfs gc error: ${e.toString()}`)
+  );
 } catch (e) {
   logger.error(`💥 Caught unhandled error ${e.toString()}`);
 }

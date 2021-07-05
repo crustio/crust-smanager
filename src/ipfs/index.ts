@@ -80,4 +80,12 @@ export default class IpfsApi {
     const repoStat = await this.ipfs.repo.stat();
     return repoStat.storageMax.minus(repoStat.repoSize);
   }
+
+  /**
+   * ipfs repo gc
+   * @param to timeout for gc operation
+   */
+  async repoGC(to: number) {
+    await this.ipfs.repo.gc({timeout: to});
+  }
 }
