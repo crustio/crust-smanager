@@ -288,10 +288,10 @@ export default class DecisionEngine {
           if (job) {
             if (value === job['sealed_size']) {
               logger.info(
-                `🙅 Delete deaded jobs key: ${key} size: ${value} newsize: ${job['sealed_size']}`
+                `🙅 End deaded jobs key: ${key} size: ${value} newsize: ${job['sealed_size']}`
               );
               this.pendingJobs.delete(key);
-              this.sworkerApi.delete(key);
+              this.sworkerApi.sealEnd(key);
             } else {
               this.pendingJobs.set(key, job['sealed_size']);
             }
