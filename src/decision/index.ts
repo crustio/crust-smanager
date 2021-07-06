@@ -316,10 +316,10 @@ export default class DecisionEngine {
     const x = true;
     while (x) {
       try {
-        await sleep(IPFSGCInterval);
         logger.info('⏳ IPFS GC start');
         await this.ipfsApi.repoGC(IPFSGCTimeout);
         logger.info('⏳ IPFS GC end');
+        await sleep(IPFSGCInterval);
       } catch (err) {
         logger.warn(`⏳ IPFS GC encounter problem, detail with ${err}`);
       }
