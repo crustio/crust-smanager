@@ -85,6 +85,7 @@ export class IPFSQueue {
   readonly filesQueueLimit: number[]; // The queue limit of different files
   currentFilesQueueLen: number[]; // The current queue length of different files
   allFileSize: number; // The total size of files
+  queuedCids: Set<string>; // All queued cid
 
   constructor(fms: number[], fql: number[]) {
     this.filesMaxSize = fms;
@@ -94,6 +95,7 @@ export class IPFSQueue {
       this.currentFilesQueueLen.push(0);
     }
     this.allFileSize = 0;
+    this.queuedCids = new Set<string>();
   }
 
   private findIndex(size: number): number {
@@ -106,18 +108,23 @@ export class IPFSQueue {
     return index;
   }
 
-  push(size: number): boolean {
-    const index = this.findIndex(size);
+  push(nt: Task): boolean {
+    if (this.queuedCids.has(nt.cid)) {
+      return false;
+    }
+
+    const index = this.findIndex(nt.size);
     if (this.currentFilesQueueLen[index] < this.filesQueueLimit[index]) {
       this.currentFilesQueueLen[index]++;
-      this.allFileSize += size;
+      this.allFileSize += nt.size;
       return true;
     }
     return false;
   }
 
-  pop(size: number) {
-    const index = this.findIndex(size);
+  pop(nt: Task) {
+    this.queuedCids.delete(nt.cid);
+    const index = this.findIndex(nt.size);
     if (this.currentFilesQueueLen[index] > 0) {
       this.currentFilesQueueLen[index]--;
     } else if (this.currentFilesQueueLen[index] === 0) {
@@ -126,7 +133,7 @@ export class IPFSQueue {
       this.currentFilesQueueLen[index] = 0;
     }
 
-    this.allFileSize -= size;
+    this.allFileSize -= nt.size;
     if (this.allFileSize < 0) {
       this.allFileSize = 0;
     }

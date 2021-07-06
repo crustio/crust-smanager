@@ -220,7 +220,7 @@ export default class DecisionEngine {
 
           if (await this.shouldPull(pt, free, sysFree)) {
             // Q length >= 10 drop it to failed pts
-            if (!this.ipfsQueue.push(pt.size)) {
+            if (!this.ipfsQueue.push(pt)) {
               this.pullingQueue.push(pt);
               continue;
             }
@@ -254,7 +254,7 @@ export default class DecisionEngine {
                 }
               })
               .finally(() => {
-                this.ipfsQueue.pop(pt.size);
+                this.ipfsQueue.pop(pt);
               });
           }
         }
