@@ -220,7 +220,7 @@ export default class DecisionEngine {
 
           if (await this.shouldPull(pt, free, sysFree)) {
             // Q length >= 10 drop it to failed pts
-            if (!this.ipfsQueue.push(pt.size)) {
+            if (!this.ipfsQueue.push(pt)) {
               this.pullingQueue.push(pt);
               continue;
             }
@@ -254,7 +254,7 @@ export default class DecisionEngine {
                 }
               })
               .finally(() => {
-                this.ipfsQueue.pop(pt.size);
+                this.ipfsQueue.pop(pt);
               });
           }
         }
@@ -288,10 +288,10 @@ export default class DecisionEngine {
           if (job) {
             if (value === job['sealed_size']) {
               logger.info(
-                `🙅 Delete deaded jobs key: ${key} size: ${value} newsize: ${job['sealed_size']}`
+                `🙅 End deaded jobs key: ${key} size: ${value} newsize: ${job['sealed_size']}`
               );
               this.pendingJobs.delete(key);
-              this.sworkerApi.delete(key);
+              this.sworkerApi.sealEnd(key);
             } else {
               this.pendingJobs.set(key, job['sealed_size']);
             }
@@ -316,10 +316,10 @@ export default class DecisionEngine {
     const x = true;
     while (x) {
       try {
-        await sleep(IPFSGCInterval);
         logger.info('⏳ IPFS GC start');
         await this.ipfsApi.repoGC(IPFSGCTimeout);
         logger.info('⏳ IPFS GC end');
+        await sleep(IPFSGCInterval);
       } catch (err) {
         logger.warn(`⏳ IPFS GC encounter problem, detail with ${err}`);
       }
