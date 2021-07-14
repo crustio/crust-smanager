@@ -1,14 +1,17 @@
+import { loadConfig } from './config/load-config';
 import { logger } from './utils/logger';
 
 async function main() {
-  logger.info('☄ [global] starting smanager');
+  logger.info('starting smanager');
+  const config = await loadConfig('smanager-config.json');
+  logger.debug('smanager config loaded: %o', config);
 }
 
 main()
   .then(() => {
-    logger.info('☄ [global] application exited normally');
+    logger.info('application exited normally');
   })
   .catch((e) => {
-    logger.error(`☄️ [global] Uncaught exception`, e);
+    logger.error(`Uncaught exception`, e);
     process.exit(1);
   });

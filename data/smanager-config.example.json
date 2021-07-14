@@ -1,0 +1,20 @@
+{
+  "chain": {
+    "endPoint": "chain"
+  },
+  "sworker": {
+    "endPoint": "sworker"
+  },
+  "ipfs": {
+    "endPoint": "ipfs"
+  },
+  "node": {
+    "account": "mock",
+    "role": "member"
+  },
+  "telemetry": {
+    "endPoint": "telemetry"
+  },
+  "dataDir": "data",
+  "strategy": "default"
+}

@@ -1,4 +1,4 @@
-import { createLogger, format, transports } from 'winston';
+import { createLogger, format, Logger, transports } from 'winston';
 
 const defaultLogger = createLogger({
   level: 'info',
@@ -36,7 +36,7 @@ export interface ChildLoggerConfig {
   modulePrefix?: string;
 }
 
-export function createChildLogger(config: ChildLoggerConfig) {
+export function createChildLogger(config: ChildLoggerConfig): Logger {
   return defaultLogger.child(config);
 }
 
