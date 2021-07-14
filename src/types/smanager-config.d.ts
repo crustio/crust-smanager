@@ -38,3 +38,7 @@ export interface SManagerConfig {
   dataDir: string;
   strategy: StrategyConfig;
 }
+
+export interface NormalizedConfig extends SManagerConfig {
+  strategy: StrategyWeights;
+}

@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import { validateConfig } from '../src/config/config.schema';
+import { normalizeConfig } from '../src/config/load-config';
 import { SManagerConfig } from '../src/types/smanager-config';
 
 const defaultConfig: SManagerConfig = {
@@ -61,5 +62,21 @@ describe('config validation', () => {
     expect(() => validateConfig(config)).toThrow();
     const configWithoutChain = _.omit(defaultConfig, 'chain');
     expect(() => validateConfig(configWithoutChain)).toThrow();
+  });
+
+  it('normalize weights', () => {
+    const config: SManagerConfig = {
+      ...defaultConfig,
+      strategy: {
+        srdFirst: 10,
+        newFileFirst: 10,
+        random: 5,
+      },
+    };
+    expect(normalizeConfig(config).strategy).toStrictEqual({
+      srdFirst: 40,
+      newFileFirst: 40,
+      random: 20,
+    });
   });
 });
