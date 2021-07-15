@@ -1,6 +1,7 @@
 import Bluebird from 'bluebird';
 import _ from 'lodash';
 import { loadConfig } from './config/load-config';
+import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
 import { AppContext } from './types/context';
 import { Task } from './types/tasks';
@@ -24,6 +25,7 @@ async function main() {
   const context: AppContext = {
     config,
   };
+  await loadDb(config);
   const tasks = loadTasks(context);
   try {
     _.forEach(tasks, (t) => t.start(context));

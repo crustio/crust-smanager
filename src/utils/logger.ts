@@ -19,7 +19,11 @@ const defaultLogger = createLogger({
       if (info.moduleId) {
         left += `[${info.moduleId}]`;
       }
-      return `${left} ${info.message}`;
+      if (typeof info.message === 'string') {
+        return `${left} ${info.message}`;
+      }
+      const m = JSON.stringify(info.message);
+      return `${left} ${m}`;
     }),
   ),
   transports: [
