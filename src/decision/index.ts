@@ -110,10 +110,14 @@ export default class DecisionEngine {
       } else {
         const groupOwner = sworkIdentity.group;
         if (!groupOwner) {
-          logger.warn('⚠️ Wait for the node to join group, smanager will deal orders');
+          logger.warn(
+            '⚠️ Wait for the node to join group, smanager will deal orders'
+          );
           return;
         } else if (this.crustApi.getChainAccount() === groupOwner) {
-          logger.error("💥 Can't use owner account to configure isolation/member");
+          logger.error(
+            "💥 Can't use owner account to configure isolation/member"
+          );
           return;
         }
 
