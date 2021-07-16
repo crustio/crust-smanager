@@ -74,7 +74,10 @@ export default class CrustApi {
       );
       await sleep(6000);
     }
-    await sleep(6000);
+
+    // Wait for sworker
+    logger.info(`⏳ Wait 60s for sWorker`)
+    await sleep(60 * 1000);
 
     // Double check for chain synchronization
     while (await this.isSyncing()) {
