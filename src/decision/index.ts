@@ -100,32 +100,30 @@ export default class DecisionEngine {
       // 3. Update current block number and information
       this.currentBn = bn;
 
-      // 4. If the node identity is member, wait for it to join group
-      if (this.nodeId === consts.MEMBER) {
-        const sworkIdentity = await this.crustApi.sworkIdentity();
-        if (!sworkIdentity) {
-          logger.warn(
-            "⚠️ Can't get swork identity, please wait your sworker to report the frist work report"
-          );
+      // 4. Wait for it to join group
+      const sworkIdentity = await this.crustApi.sworkIdentity();
+      if (!sworkIdentity) {
+        logger.warn(
+          '⚠️ Please wait your sworker to report the frist work report, smanager will deal orders'
+        );
+        return;
+      } else {
+        const groupOwner = sworkIdentity.group;
+        if (!groupOwner) {
+          logger.warn('⚠️ Wait for the node to join group, smanager will deal orders');
           return;
-        } else {
-          const groupOwner = sworkIdentity.group;
-          if (!groupOwner) {
-            logger.warn('⚠️ Wait for the member to join group');
-            return;
-          } else if (this.crustApi.getChainAccount() === groupOwner) {
-            logger.error("💥 Can't use owner account to configure member");
-            return;
-          }
-
-          // Assign this member node's owner
-          this.groupOwner = groupOwner;
-
-          // Get group members
-          this.members = await this.crustApi.groupMembers(groupOwner);
-          // and sort by alphabetic
-          this.members.sort();
+        } else if (this.crustApi.getChainAccount() === groupOwner) {
+          logger.error("💥 Can't use owner account to configure isolation/member");
+          return;
         }
+
+        // Assign this member node's owner
+        this.groupOwner = groupOwner;
+
+        // Get group members
+        this.members = await this.crustApi.groupMembers(groupOwner);
+        // and sort by alphabetic
+        this.members.sort();
       }
 
       // 5. Try to get new files
@@ -420,11 +418,7 @@ export default class DecisionEngine {
       pTake = 250 / this.allNodeCount;
     }
 
-    if (
-      this.nodeId === consts.MEMBER &&
-      this.groupOwner &&
-      this.members.length > 0
-    ) {
+    if (this.groupOwner && this.members.length > 0) {
       pTake = pTake * this.members.length;
     }
 
@@ -438,11 +432,7 @@ export default class DecisionEngine {
    */
   private async isMyTurn(cid: string): Promise<boolean> {
     // Member but without groupOwner is freaking strange, but anyway pass with true
-    if (
-      this.nodeId === consts.MEMBER &&
-      this.groupOwner &&
-      this.members.length > 0
-    ) {
+    if (this.groupOwner && this.members.length > 0) {
       // 1. Get group length
       const len = this.members.length;
       // 2. Get my index
@@ -457,7 +447,7 @@ export default class DecisionEngine {
       }
     }
 
-    return true;
+    return false;
   }
 
   /**
