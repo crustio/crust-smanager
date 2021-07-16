@@ -57,7 +57,29 @@ export default class CrustApi {
       this.initApi(); // Try to recreate api to connect running chain
     }
 
+    // Waiting for chain header > 10
+    while ((await this.header()).number.toNumber() <= 10) {
+      `⛓ Chain is synchronizing, current block number ${(
+        await this.header()
+      ).number.toNumber()}`;
+      await sleep(6000);
+    }
+
     // Waiting for chain synchronization
+    while (await this.isSyncing()) {
+      logger.info(
+        `⛓ Chain is synchronizing, current block number ${(
+          await this.header()
+        ).number.toNumber()}`
+      );
+      await sleep(6000);
+    }
+
+    // Wait for sworker
+    logger.info('⏳ Wait 60s for sWorker');
+    await sleep(60 * 1000);
+
+    // Double check for chain synchronization
     while (await this.isSyncing()) {
       logger.info(
         `⛓ Chain is synchronizing, current block number ${(
