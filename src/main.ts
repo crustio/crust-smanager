@@ -72,16 +72,14 @@ async function waitChainSynced(context: AppContext): Promise<void> {
   const maxWait = 1000;
   let tick = 0;
   logger.info('waiting for chain synced');
-  while (true) {
+  while (tick < maxWait) {
     tick++;
     await Bluebird.delay(3 * 1000);
     if (!(await context.api.isSyncing())) {
-      break;
-    }
-    if (tick > maxWait) {
-      throw new Error('time too long to wait for chain synced!');
+      return;
     }
   }
+  throw new Error('time too long to wait for chain synced!');
 }
 
 async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
@@ -103,7 +101,7 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
       );
     }
     await Bluebird.delay(1 * 1000);
-  } while (true);
+  } while (true); // eslint-disable-line
 }
 
 main()
