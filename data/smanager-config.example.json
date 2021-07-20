@@ -1,5 +1,6 @@
 {
   "chain": {
+    "account": "test",
     "endPoint": "chain"
   },
   "sworker": {

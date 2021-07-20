@@ -1,4 +1,5 @@
 export interface ChainConfig {
+  account: string;
   endPoint: string;
 }
 

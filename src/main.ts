@@ -1,12 +1,14 @@
 import Bluebird from 'bluebird';
 import _ from 'lodash';
+import CrustApi from './chain';
 import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
 import { AppContext } from './types/context';
+import { NormalizedConfig } from './types/smanager-config';
 import { Task } from './types/tasks';
 import { logger } from './utils/logger';
-import { timeout } from './utils/promise-utils';
+import { timeout, timeoutOrError } from './utils/promise-utils';
 
 /**
  * SManager tasks:
@@ -22,7 +24,10 @@ async function main() {
   logger.info('starting smanager');
   const config = await loadConfig('smanager-config.json');
   logger.debug('smanager config loaded: %o', config);
+  const api = await timeoutOrError(startChain(config), 10 * 1000);
+
   const context: AppContext = {
+    api,
     config,
   };
   await loadDb(config);
@@ -34,6 +39,7 @@ async function main() {
     throw e;
   } finally {
     logger.info('stopping all tasks');
+    api.stop();
     await timeout(
       Bluebird.map(tasks, (t) => t.stop()),
       5 * 1000,
@@ -45,6 +51,17 @@ async function main() {
 function loadTasks(context: AppContext): Task[] {
   const indexingTasks = createIndexingTasks(context);
   return indexingTasks;
+}
+
+async function startChain(config: NormalizedConfig) {
+  logger.info(
+    'starting chain api with endpoint: %s, acocunt: %s',
+    config.chain.endPoint,
+    config.chain.account,
+  );
+  const chainApi = new CrustApi(config.chain.endPoint, config.chain.account);
+  await chainApi.initApi();
+  return chainApi;
 }
 
 main()

@@ -5,6 +5,7 @@ import { SManagerConfig } from '../src/types/smanager-config';
 
 const defaultConfig: SManagerConfig = {
   chain: {
+    account: 'test',
     endPoint: 'chain',
   },
   sworker: {

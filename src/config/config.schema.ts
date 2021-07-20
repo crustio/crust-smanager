@@ -3,6 +3,7 @@ import { SManagerConfig } from '../types/smanager-config';
 import { createChildLogger } from '../utils/logger';
 
 const chainConfigSchema = Joi.object().keys({
+  account: Joi.string().required(),
   endPoint: Joi.string().required(),
 });
 

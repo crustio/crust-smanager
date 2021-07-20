@@ -6,7 +6,7 @@ import _ from 'lodash';
 import { SLOT_LENGTH } from '../utils/consts';
 import BN from 'bn.js';
 import { logger } from '../utils/logger';
-import { UnsubscribePromise } from '@polkadot/api/types';
+import { UnsubscribePromise, VoidFn } from '@polkadot/api/types';
 
 export interface FileInfo {
   cid: string;
@@ -21,22 +21,56 @@ export default class CrustApi {
   private readonly addr: string;
   private api!: ApiPromise;
   private readonly chainAccount: string;
+  private latestBlock = 0;
+  private subLatestHead: VoidFn = null;
 
   constructor(addr: string, chainAccount: string) {
     this.addr = addr;
     this.chainAccount = chainAccount;
-    this.initApi();
   }
 
-  initApi(): void {
+  async initApi(): Promise<void> {
     if (this.api && this.api.disconnect) {
       this.api.disconnect().then().catch();
+    }
+    if (this.subLatestHead) {
+      this.subLatestHead();
     }
 
     this.api = new ApiPromise({
       provider: new WsProvider(this.addr),
       typesBundle: typesBundleForPolkadot,
     });
+
+    await this.api.isReady;
+
+    this.subLatestHead = await this.api.rpc.chain.subscribeFinalizedHeads(
+      (head: Header) => {
+        this.latestBlock = head.number.toNumber();
+      },
+    );
+  }
+
+  // stop this api instance
+  async stop(): Promise<void> {
+    if (this.subLatestHead) {
+      this.subLatestHead();
+    }
+    if (this.api) {
+      const api = this.api;
+      this.api = null;
+      if (api.disconnect) {
+        await api.disconnect();
+      }
+    }
+  }
+
+  isConnected(): boolean {
+    return this.api.isConnected;
+  }
+
+  latestFinalizedBlock(): number {
+    return this.latestBlock;
   }
 
   /// READ methods
@@ -163,7 +197,7 @@ export default class CrustApi {
    * @param groupOwner owner's account id
    * @returns members(or empty vec)
    */
-  async groupMembers(groupOwner: string): Promise<Array<string>> {
+  async groupMembers(groupOwner: string): Promise<string[]> {
     try {
       return parseObj(await this.api.query.swork.groups(groupOwner));
     } catch (e) {
@@ -258,7 +292,7 @@ export default class CrustApi {
   }
 
   private parseFileInfo(ex: Extrinsic): FileInfo {
-    const exData = parseObj(ex.method).args;
+    const exData = ex.method.args as any; // eslint-disable-line
     return {
       cid: hexToString(exData.cid),
       size: exData.reported_file_size,

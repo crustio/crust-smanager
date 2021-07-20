@@ -11,8 +11,11 @@ export * as consts from './consts';
  * Parse object into JSON object
  * @param o any object
  */
-export function parseObj(o: unknown): unknown {
-  return JSON.parse(JSON.stringify(o));
+export function parseObj<T>(o: unknown): T {
+  if (typeof o !== 'string') {
+    return o as T;
+  }
+  return JSON.parse(o);
 }
 
 /**
@@ -59,7 +62,7 @@ export function getRandSec(seed: number): number {
  * @returns 0-1
  */
 export function rdm(seed: string): number {
-  const rng = seedrandom.default(seed, { entropy: true });
+  const rng = seedrandom(seed, { entropy: true });
   return rng();
 }
 
