@@ -10,6 +10,8 @@ import { Task } from './types/tasks';
 import { logger } from './utils/logger';
 import { timeout, timeoutOrError } from './utils/promise-utils';
 
+const MaxTickTimout = 15 * 1000;
+
 /**
  * SManager tasks:
  * 1. Indexing tasks - collect file orders and put them in orders db
@@ -33,7 +35,9 @@ async function main() {
   await loadDb(config);
   const tasks = loadTasks(context);
   try {
+    await waitChainSynced(context);
     _.forEach(tasks, (t) => t.start(context));
+    await doEventLoop(context, tasks);
   } catch (e) {
     logger.error('unexpected error caught', e);
     throw e;
@@ -62,6 +66,44 @@ async function startChain(config: NormalizedConfig) {
   const chainApi = new CrustApi(config.chain.endPoint, config.chain.account);
   await chainApi.initApi();
   return chainApi;
+}
+
+async function waitChainSynced(context: AppContext): Promise<void> {
+  const maxWait = 1000;
+  let tick = 0;
+  logger.info('waiting for chain synced');
+  while (true) {
+    tick++;
+    await Bluebird.delay(3 * 1000);
+    if (!(await context.api.isSyncing())) {
+      break;
+    }
+    if (tick > maxWait) {
+      throw new Error('time too long to wait for chain synced!');
+    }
+  }
+}
+
+async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
+  const { api } = context;
+  let lastBlock = api.latestFinalizedBlock();
+  logger.info('running event loop');
+  do {
+    const curBlock = api.latestFinalizedBlock();
+    if (lastBlock >= curBlock) {
+      await Bluebird.delay(3 * 1000);
+      continue;
+    }
+    for (let block = lastBlock + 1; block <= curBlock; block++) {
+      logger.info('run tasks on block %d', block);
+      lastBlock = block;
+      await timeoutOrError(
+        Bluebird.map(tasks, (t) => t.onTick(lastBlock)),
+        MaxTickTimout,
+      );
+    }
+    await Bluebird.delay(1 * 1000);
+  } while (true);
 }
 
 main()
