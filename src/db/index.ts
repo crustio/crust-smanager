@@ -16,5 +16,7 @@ export async function loadDb(config: NormalizedConfig): Promise<boolean> {
   });
 
   await applyMigration(sequelize, logger);
+  // we use sequelize just for migrations
+  await sequelize.close();
   return true;
 }
