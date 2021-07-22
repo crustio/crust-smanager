@@ -24,7 +24,7 @@ export const up: MigrationFn<QueryInterface> = async ({
 export const down: MigrationFn<QueryInterface> = async ({
   context: sequelize,
 }) => {
-  await sequelize.dropTable('file_woner');
+  await sequelize.dropTable('file_owner');
   await sequelize.dropTable('pin_record');
   await sequelize.dropTable('file_record');
   await sequelize.dropTable('config');
@@ -173,7 +173,7 @@ async function createFileOwnersTable(sequelize: QueryInterface) {
           allowNull: false,
         },
         create_at: {
-          type: DataTypes.STRING,
+          type: DataTypes.INTEGER,
           allowNull: false,
         },
       },

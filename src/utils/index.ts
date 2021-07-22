@@ -1,4 +1,5 @@
 import { URL } from 'url';
+import dayjs from 'dayjs';
 import BigNumber from 'bignumber.js';
 import seedrandom from 'seedrandom';
 import Bluebird from 'bluebird';
@@ -77,4 +78,8 @@ export function lettersToNum(s: string): number {
   }
 
   return num;
+}
+
+export function getTimestamp(): number {
+  return dayjs().unix();
 }

@@ -49,3 +49,11 @@
   - cid [string]
   - owner [string]
   - createAt [number/timestamp]
+
+## Cleanup Record table
+  records for files to be cleaned up
+  - id [number]
+  - cid [string]
+  - status [string]
+  - lastUpdated [number/timestamp]
+  - createAt [number/timestamp]

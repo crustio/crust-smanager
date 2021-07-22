@@ -28,21 +28,26 @@ async function main() {
   logger.debug('smanager config loaded: %o', config);
   const api = await timeoutOrError(startChain(config), 10 * 1000);
 
+  const database = await loadDb(config);
+
   const context: AppContext = {
     api,
     config,
+    database,
   };
-  await loadDb(config);
-  const tasks = loadTasks(context);
+  const tasks = await loadTasks(context);
   try {
-    await waitChainSynced(context);
+    // start tasks first
     _.forEach(tasks, (t) => t.start(context));
+    await waitChainSynced(context);
+    // start event loop after chain is synced
     await doEventLoop(context, tasks);
   } catch (e) {
     logger.error('unexpected error caught', e);
     throw e;
   } finally {
     logger.info('stopping all tasks');
+    await timeout(database.close(), 5 * 1000, null);
     api.stop();
     await timeout(
       Bluebird.map(tasks, (t) => t.stop()),
@@ -52,8 +57,8 @@ async function main() {
   }
 }
 
-function loadTasks(context: AppContext): Task[] {
-  const indexingTasks = createIndexingTasks(context);
+async function loadTasks(context: AppContext): Promise<Task[]> {
+  const indexingTasks = await createIndexingTasks(context);
   return indexingTasks;
 }
 

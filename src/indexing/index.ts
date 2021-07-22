@@ -7,13 +7,17 @@
 import { AppContext } from '../types/context';
 import { Task } from '../types/tasks';
 import { createChildLogger } from '../utils/logger';
+import { createLatestIndexer } from './latest-indexer';
 
-export function createIndexingTasks(_context: AppContext): Task[] {
+export async function createIndexingTasks(
+  context: AppContext,
+): Promise<Task[]> {
   const logger = createChildLogger({
     moduleId: 'indexing',
     modulePrefix: '✏️',
   });
 
   logger.info('creating indexing tasks');
-  return [];
+  const latestIndexer = await createLatestIndexer(context, logger);
+  return [latestIndexer];
 }

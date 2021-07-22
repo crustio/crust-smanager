@@ -1,5 +1,11 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { Header, Extrinsic, EventRecord } from '@polkadot/types/interfaces';
+import {
+  BlockHash,
+  Header,
+  Extrinsic,
+  EventRecord,
+  SignedBlock,
+} from '@polkadot/types/interfaces';
 import { hexToString, parseObj, sleep } from '../utils';
 import { typesBundleForPolkadot, crustTypes } from '@crustio/type-definitions';
 import _ from 'lodash';
@@ -7,11 +13,13 @@ import { SLOT_LENGTH } from '../utils/consts';
 import BN from 'bn.js';
 import { logger } from '../utils/logger';
 import { UnsubscribePromise, VoidFn } from '@polkadot/api/types';
+import Bluebird from 'bluebird';
 
 export interface FileInfo {
   cid: string;
   size: number;
   tips: number;
+  owner: string;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
@@ -43,6 +51,10 @@ export default class CrustApi {
     });
 
     await this.api.isReady;
+    while (!this.api.isConnected) {
+      logger.info('waiting for api to connect');
+      await Bluebird.delay(1000);
+    }
 
     this.subLatestHead = await this.api.rpc.chain.subscribeFinalizedHeads(
       (head: Header) => {
@@ -71,6 +83,20 @@ export default class CrustApi {
 
   latestFinalizedBlock(): number {
     return this.latestBlock;
+  }
+
+  async getBlockByNumber(blockNumber: number): Promise<SignedBlock> {
+    const hash = await this.getBlockHash(blockNumber);
+    const block = await this.api.rpc.chain.getBlock(hash);
+    return block;
+  }
+
+  async getBlockHash(blockNumber: number): Promise<BlockHash> {
+    return this.api.rpc.chain.getBlockHash(blockNumber);
+  }
+
+  chainApi(): ApiPromise {
+    return this.api;
   }
 
   /// READ methods
@@ -236,7 +262,9 @@ export default class CrustApi {
           const ex = exs[exIdx];
 
           // b. Parse new file, continue with parsing error
-          newFiles.push(this.parseFileInfo(ex));
+          newFiles.push(
+            this.parseFileInfo(ex, hexToString(data[1].toString())),
+          );
         } else if (method === 'CalculateSuccess') {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
@@ -291,13 +319,14 @@ export default class CrustApi {
     }
   }
 
-  private parseFileInfo(ex: Extrinsic): FileInfo {
+  private parseFileInfo(ex: Extrinsic, cid: string): FileInfo {
     const exData = ex.method.args as any; // eslint-disable-line
     return {
-      cid: hexToString(exData.cid),
-      size: exData.reported_file_size,
+      cid,
+      size: exData[1].toNumber(),
       // tips < 0.000001 will be zero
       tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
+      owner: ex.signer.toString(),
     };
   }
 }
