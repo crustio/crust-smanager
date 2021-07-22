@@ -190,7 +190,7 @@ export default class CrustApi {
    */
   async groupMembers(groupOwner: string): Promise<Array<string>> {
     try {
-      return parseObj(await this.api.query.swork.groups(groupOwner));
+      return parseObj(await this.api.query.swork.groups(groupOwner)).members;
     } catch (e) {
       logger.error(`💥 Get group member error: ${e}`);
       return [];

@@ -19,7 +19,7 @@
     "posttest": "yarn run lint"
   },
   "dependencies": {
-    "@crustio/type-definitions": "0.0.10",
+    "@crustio/type-definitions": "1.0.1",
     "@polkadot/api": "4.2.2-4",
     "axios": "^0.21.1",
     "bignumber.js": "^9.0.1",
