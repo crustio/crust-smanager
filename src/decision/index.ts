@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import {Header} from '@polkadot/types/interfaces';
 import TaskQueue, {Task, IPFSQueue} from '../queue';
 import IpfsApi from '../ipfs';
-import CrustApi, {FileInfo, UsedInfo} from '../chain';
+import CrustApi, {FileInfo, MarketFileInfo} from '../chain';
 import {logger} from '../log';
 import {
   rdm,
@@ -387,17 +387,20 @@ export default class DecisionEngine {
    * @throws crustApi error
    */
   private async isReplicaFullOrFileNotExist(cid: string): Promise<boolean> {
-    const usedInfo: UsedInfo | null = await this.crustApi.maybeGetFileUsedInfo(
+    const marketFileInfo: MarketFileInfo | null = await this.crustApi.maybeGetMarketFileInfo(
       cid
     );
 
-    if (usedInfo && _.size(usedInfo.groups) > consts.MaxFileReplicas) {
+    if (
+      marketFileInfo &&
+      _.size(marketFileInfo.replicas) > consts.MaxFileReplicas
+    ) {
       logger.warn(
-        `⚠️ File replica already full with ${usedInfo.groups.length}`
+        `⚠️ File replica already full with ${marketFileInfo.replicas.length}`
       );
 
       return true;
-    } else if (!usedInfo) {
+    } else if (!marketFileInfo) {
       logger.warn(`⚠️ File ${cid} not exist`);
       return true;
     }

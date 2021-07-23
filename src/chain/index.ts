@@ -13,8 +13,7 @@ export interface FileInfo {
   size: number;
   tips: number;
 }
-
-export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
+export type MarketFileInfo = typeof crustTypes.market.types.FileInfo;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
@@ -232,7 +231,7 @@ export default class CrustApi {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
           const cid = hexToString(data[0].toString());
-          const isClosed = (await this.maybeGetFileUsedInfo(cid)) === null;
+          const isClosed = (await this.maybeGetMarketFileInfo(cid)) === null;
           if (isClosed) {
             closedFiles.push(cid);
           }
@@ -255,16 +254,16 @@ export default class CrustApi {
   /**
    * Get file info from chain by cid
    * @param cid Ipfs file cid
-   * @returns Option<UsedInfo>
+   * @returns Option<MarketFileInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetFileUsedInfo(cid: string): Promise<UsedInfo | null> {
+  async maybeGetMarketFileInfo(cid: string): Promise<MarketFileInfo | null> {
     await this.withApiReady();
 
     try {
-      // Should be like [fileInfo, usedInfo] or null
-      const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
-      return fileUsedInfo ? fileUsedInfo[1] : null;
+      // Should be like [marketFileInfo, usedInfo] or null
+      const marketFileInfo = parseObj(await this.api.query.market.files(cid));
+      return marketFileInfo ? marketFileInfo : null;
     } catch (e) {
       logger.error(`💥 Get file/used info error: ${e}`);
       return null;
