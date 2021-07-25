@@ -1,3 +1,4 @@
+import { Dayjs } from 'dayjs';
 import { FileInfo } from '../chain';
 import { Indexer } from './indexing';
 
@@ -45,4 +46,15 @@ export interface DbOrderOperator {
   getFileInfos: (cids: string[], indexer: Indexer) => Promise<FileRecord[]>;
   createCleanupRecord: (cid: string) => Promise<void>;
   deleteCleanupRecords: (cids: string[]) => Promise<void>;
+}
+
+type DbResult<T> = Promise<T | null>;
+type DbWriteResult = Promise<void>;
+export interface ConfigOperator {
+  readString: (name: string) => DbResult<string>;
+  saveString: (name: string, v: string) => DbWriteResult;
+  readInt: (name: string) => DbResult<number>;
+  saveInt: (name: string, v: number) => DbWriteResult;
+  readTime: (name: string) => DbResult<Dayjs>;
+  saveTime: (name: string, v: Dayjs) => DbWriteResult;
 }

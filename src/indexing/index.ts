@@ -7,6 +7,7 @@
 import { AppContext } from '../types/context';
 import { Task } from '../types/tasks';
 import { createChildLogger } from '../utils/logger';
+import { createDbIndexer } from './chain-db-indexer';
 import { createLatestIndexer } from './latest-indexer';
 
 export async function createIndexingTasks(
@@ -18,6 +19,7 @@ export async function createIndexingTasks(
   });
 
   logger.info('creating indexing tasks');
+  const dbIndexer = await createDbIndexer(context, logger);
   const latestIndexer = await createLatestIndexer(context, logger);
-  return [latestIndexer];
+  return [dbIndexer, latestIndexer];
 }
