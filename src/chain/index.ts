@@ -19,7 +19,7 @@ export interface FileInfo {
   cid: string;
   size: number;
   tips: number;
-  owner: string;
+  owner: string | null;
 }
 
 export type UsedInfo = typeof crustTypes.market.types.UsedInfo;

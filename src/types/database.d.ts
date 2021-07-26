@@ -57,4 +57,11 @@ export interface ConfigOperator {
   saveInt: (name: string, v: number) => DbWriteResult;
   readTime: (name: string) => DbResult<Dayjs>;
   saveTime: (name: string, v: Dayjs) => DbWriteResult;
+  readJson: (name: string) => DbResult<unknown>;
+  saveJson: (name: string, v: unknown) => DbWriteResult;
+}
+
+export interface LatestBlockTime {
+  block: number;
+  time: number;
 }

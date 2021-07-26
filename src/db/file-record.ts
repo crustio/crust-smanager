@@ -12,7 +12,10 @@ import { getTimestamp } from '../utils';
 import { logger } from '../utils/logger';
 
 export function createFileOrderOperator(db: Database): DbOrderOperator {
-  const getFileInfos = async (cids, indexer): Promise<FileRecord[]> => {
+  const getFileInfos = async (
+    cids: string[],
+    indexer: string,
+  ): Promise<FileRecord[]> => {
     const records = await db.all(
       'select id, cid, expire_at, size, amount, replicas, indexer, status, last_updated, create_at from file_record where cid in (?) and indexer = ? limit 1',
       [cids, indexer],
@@ -31,8 +34,8 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
         info.size,
         info.tips,
         0,
-        'new',
         indexer,
+        'new',
         getTimestamp(),
         getTimestamp(),
       ],
@@ -81,8 +84,12 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     files: FileInfo[],
     indexer: Indexer,
   ): Promise<{ newFiles: number; updated: number }> => {
-    const existingInfos = await getFileInfos(files, indexer);
+    const existingInfos = await getFileInfos(
+      _.map(files, (f) => f.cid),
+      indexer,
+    );
     const existingMap = _.keyBy(existingInfos, (i) => i.cid);
+    logger.info('exiting: %o', existingInfos);
     const [existingFiles, newFiles] = _.partition(files, (f) => {
       return _.has(existingMap, f.cid);
     });
@@ -91,7 +98,7 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
       newFiles.length,
       existingFiles.length,
     );
-    await Bluebird.mapSeries(newFiles, _.partialRight(addFileRecord, indexer));
+    await Bluebird.mapSeries(newFiles, (f) => addFileRecord(f, indexer));
 
     await Bluebird.mapSeries(existingFiles, (f) =>
       updateFileTips(existingMap[f.cid].id, f),
@@ -101,6 +108,9 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     await deleteCleanupRecords(cids);
     const allFiles = _.concat(newFiles, existingFiles);
     await Bluebird.mapSeries(allFiles, async (f) => {
+      if (!f.owner) {
+        return;
+      }
       const record = await getOwnerRecordByCid(f.cid, f.owner);
       if (record) {
         // already have the file/owner record
