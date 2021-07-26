@@ -65,16 +65,35 @@ async function dbIndexer(
     logger.info('restart indexing from key: %s', lastIndexedKey);
   }
 
+  const isInCooldownPeriod = async () => {
+    const CooldownTime = dayjs.duration({
+      minutes: 10,
+    });
+    const lastCompeleted = await config.readTime(KeyLastDoneTime);
+    if (!lastCompeleted) {
+      return false;
+    }
+    return (
+      dayjs.duration(dayjs().diff(lastCompeleted)).asSeconds() >=
+      CooldownTime.asSeconds()
+    );
+  };
+
   while (!isStopped()) {
     try {
       await Bluebird.delay(3 * 1000); // TODO: should be configurable
       const lastBlockTime = await getLatestBlockTime(db);
       if (!lastBlockTime) {
         logger.warn(
-          'can not get block time from db, waiting a short period to check agin',
+          'can not get block time from db, wait for a short period to check agin',
         );
         await Bluebird.delay(5 * 1000);
         continue;
+      }
+      if (await isInCooldownPeriod()) {
+        // full db scan completed recently, not to need to run the indexer too often
+        logger.info('in cool down period, wait for a short while to recheck');
+        await Bluebird.delay(5 * 60 * 1000);
       }
       const keys = await (_.isEmpty(lastIndexedKey)
         ? api.chainApi().rpc.state.getKeysPaged(MarketFilesKey, 10) // TODO: batch size should be configurable
