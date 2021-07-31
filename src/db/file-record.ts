@@ -3,7 +3,9 @@ import _ from 'lodash';
 import { Database } from 'sqlite';
 import { FileInfo } from '../chain';
 import {
+  CleanupStatus,
   DbOrderOperator,
+  FileCleanupRecord,
   FileOwnerRecord,
   FileRecord,
 } from '../types/database';
@@ -128,6 +130,24 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     };
   };
 
+  const getPendingCleanupRecords = async (
+    count: number,
+  ): Promise<FileCleanupRecord[]> => {
+    return db.all(
+      `select id, cid, status, last_updated, create_at from cleanup_record where status = "pending" order by id desc limit ${count}`,
+    );
+  };
+
+  const updateCleanupRecordStatus = async (
+    id: number,
+    status: CleanupStatus,
+  ) => {
+    await db.run(
+      'update cleanup_record set status = ?, last_updated = ? where id = ?',
+      [status, getTimestamp(), id],
+    );
+  };
+
   return {
     addFiles,
     getFileInfo: async (cid, indexer) => {
@@ -140,5 +160,7 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     getFileInfos,
     createCleanupRecord,
     deleteCleanupRecords,
+    getPendingCleanupRecords,
+    updateCleanupRecordStatus,
   };
 }

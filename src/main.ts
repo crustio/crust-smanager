@@ -5,6 +5,7 @@ import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
 import IpfsApi from './ipfs';
+import SworkerApi from './sworker';
 import { createSimpleTasks } from './tasks';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
@@ -14,6 +15,7 @@ import { timeout, timeoutOrError } from './utils/promise-utils';
 
 const MaxTickTimout = 15 * 1000;
 const IpfsTimeout = 8000 * 1000; // 8000s
+const SworkerTimeout = 8000 * 1000; //8000s
 
 /**
  * SManager tasks:
@@ -37,12 +39,14 @@ async function main() {
 
   const database = await loadDb(config);
   const ipfsApi = new IpfsApi(config.ipfs.endPoint, IpfsTimeout);
+  const sworkerApi = new SworkerApi(config.sworker.endPoint, SworkerTimeout);
 
   const context: AppContext = {
     api,
     config,
     database,
     ipfsApi,
+    sworkerApi,
   };
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);

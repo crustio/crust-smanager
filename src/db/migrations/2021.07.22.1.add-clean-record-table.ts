@@ -38,7 +38,7 @@ async function createCleanupRecordTable(sequelize: QueryInterface) {
           allowNull: false,
         },
         status: {
-          type: DataTypes.INTEGER,
+          type: DataTypes.TEXT,
           allowNull: false,
         },
         last_updated: {

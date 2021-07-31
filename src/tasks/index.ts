@@ -1,6 +1,7 @@
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { createChildLogger } from '../utils/logger';
+import { createFileCleanupTask } from './file-cleanup-task';
 import { createIpfsGcTask } from './ipfs-gc-task';
 
 /**
@@ -11,5 +12,6 @@ export async function createSimpleTasks(
 ): Promise<SimpleTask[]> {
   const logger = createChildLogger({ moduleId: 'simple-tasks' });
   const ipfsGcTask = await createIpfsGcTask(context, logger);
-  return [ipfsGcTask];
+  const filesCleanupTask = await createFileCleanupTask(context, logger);
+  return [ipfsGcTask, filesCleanupTask];
 }

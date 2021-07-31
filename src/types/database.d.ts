@@ -45,7 +45,12 @@ export interface DbOrderOperator {
   getFileInfo: (cid: string, indexer: Indexer) => Promise<FileRecord | null>;
   getFileInfos: (cids: string[], indexer: Indexer) => Promise<FileRecord[]>;
   createCleanupRecord: (cid: string) => Promise<void>;
+  getPendingCleanupRecords: (count: number) => Promise<FileCleanupRecord[]>;
   deleteCleanupRecords: (cids: string[]) => Promise<void>;
+  updateCleanupRecordStatus: (
+    id: number,
+    status: CleanupStatus,
+  ) => Promise<void>;
 }
 
 type DbResult<T> = Promise<T | null>;
