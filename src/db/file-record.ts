@@ -30,10 +30,10 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
         ' values (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         info.cid,
-        0,
+        info.expiredAt,
         info.size,
         info.tips,
-        0,
+        info.replicas,
         indexer,
         'new',
         getTimestamp(),

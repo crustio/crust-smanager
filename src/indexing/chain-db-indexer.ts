@@ -169,11 +169,13 @@ async function indexOneFile(
     return null;
   }
 
-  const fileRecord = {
+  const fileRecord: FileInfo = {
     cid,
     size: fileInfo.file_size,
     tips: fileInfo.amount.toNumber(),
     owner: null,
+    replicas: fileInfo.reported_replica_count,
+    expiredAt: fileInfo.expired_on,
   };
   return fileRecord;
 }

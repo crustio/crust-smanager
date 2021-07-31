@@ -19,6 +19,8 @@ export interface FileInfo {
   cid: string;
   size: number;
   tips: number;
+  expiredAt: number | null;
+  replicas: number | null;
   owner: string | null;
 }
 
@@ -327,6 +329,8 @@ export default class CrustApi {
       // tips < 0.000001 will be zero
       tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
       owner: ex.signer.toString(),
+      expiredAt: 0,
+      replicas: 0,
     };
   }
 }
