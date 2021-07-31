@@ -89,7 +89,6 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
       indexer,
     );
     const existingMap = _.keyBy(existingInfos, (i) => i.cid);
-    logger.info('exiting: %o', existingInfos);
     const [existingFiles, newFiles] = _.partition(files, (f) => {
       return _.has(existingMap, f.cid);
     });

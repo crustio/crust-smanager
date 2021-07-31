@@ -4,6 +4,7 @@ import CrustApi from './chain';
 import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
+import IpfsApi from './ipfs';
 import { createSimpleTasks } from './tasks';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
@@ -12,6 +13,7 @@ import { logger } from './utils/logger';
 import { timeout, timeoutOrError } from './utils/promise-utils';
 
 const MaxTickTimout = 15 * 1000;
+const IpfsTimeout = 8000 * 1000; // 8000s
 
 /**
  * SManager tasks:
@@ -27,14 +29,20 @@ async function main() {
   logger.info('starting smanager');
   const config = await loadConfig('smanager-config.json');
   logger.debug('smanager config loaded: %o', config);
-  const api = await timeoutOrError(startChain(config), 10 * 1000);
+  const api = await timeoutOrError(
+    'connect to chain',
+    startChain(config),
+    10 * 1000,
+  );
 
   const database = await loadDb(config);
+  const ipfsApi = new IpfsApi(config.ipfs.endPoint, IpfsTimeout);
 
   const context: AppContext = {
     api,
     config,
     database,
+    ipfsApi,
   };
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);
@@ -115,6 +123,7 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
       logger.info('run tasks on block %d', block);
       lastBlock = block;
       await timeoutOrError(
+        `run tasks`,
         Bluebird.map(tasks, (t) => t.onTick(lastBlock)),
         MaxTickTimout,
       );

@@ -1,12 +1,14 @@
-import Bluebird from 'bluebird';
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { makeIntervalTask } from './task-utils';
 
-async function handleGc(_context: AppContext, logger: Logger): Promise<void> {
+// Repo GC timeout
+export const IPFSGCTimeout = 6 * 60 * 60 * 1000; // 6 hours
+
+async function handleGc(context: AppContext, logger: Logger): Promise<void> {
   logger.info('ipfs gc started');
-  await Bluebird.delay(10 * 1000);
+  await context.ipfsApi.repoGC(IPFSGCTimeout);
   logger.info('ipfs gc completed');
 }
 

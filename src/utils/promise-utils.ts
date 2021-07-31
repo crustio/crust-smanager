@@ -17,10 +17,11 @@ export async function timeout<T>(
 }
 
 export async function timeoutOrError<T>(
+  name: string,
   p: Promise<T>,
   time: number,
 ): Promise<T> {
   return timeout(p, time, () => {
-    throw new Error(`failed to resolve in ${time}ms`);
+    throw new Error(`"${name}" failed to resolve in ${time}ms`);
   });
 }

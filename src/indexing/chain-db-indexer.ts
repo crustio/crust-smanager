@@ -74,7 +74,7 @@ async function dbIndexer(
       return false;
     }
     return (
-      dayjs.duration(dayjs().diff(lastCompeleted)).asSeconds() >=
+      dayjs.duration(dayjs().diff(lastCompeleted)).asSeconds() <
       CooldownTime.asSeconds()
     );
   };
@@ -161,7 +161,7 @@ async function indexOneFile(
   const life = dayjs.duration(expireTime.diff(now));
   if (life.asSeconds() < MinLifeTime.asSeconds()) {
     logger.info(
-      'skip file %s, life(%.1f days) is shorter than configured min life period: %s days',
+      'skip file %s, life(%d days) is shorter than configured min life period: %d days',
       cid,
       life.asDays().toFixed(1),
       MinLifeTime.asDays().toFixed(1),
