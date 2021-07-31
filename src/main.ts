@@ -4,9 +4,10 @@ import CrustApi from './chain';
 import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
+import { createSimpleTasks } from './tasks';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
-import { Task } from './types/tasks';
+import { SimpleTask, Task } from './types/tasks';
 import { logger } from './utils/logger';
 import { timeout, timeoutOrError } from './utils/promise-utils';
 
@@ -35,9 +36,11 @@ async function main() {
     config,
     database,
   };
+  const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);
   try {
     // start tasks first
+    _.forEach(simpleTasks, (t) => t.start(context));
     _.forEach(tasks, (t) => t.start(context));
     await waitChainSynced(context);
     // start event loop after chain is synced
@@ -46,15 +49,26 @@ async function main() {
     logger.error('unexpected error caught', e);
     throw e;
   } finally {
-    logger.info('stopping all tasks');
     await timeout(database.close(), 5 * 1000, null);
     api.stop();
+    logger.info('stopping simple tasks');
+    await timeout(
+      Bluebird.map(simpleTasks, (t) => t.stop()),
+      5 * 1000,
+      [],
+    );
+    logger.info('stopping indexing tasks');
     await timeout(
       Bluebird.map(tasks, (t) => t.stop()),
       5 * 1000,
       [],
     );
   }
+}
+
+async function loadSimpleTasks(context): Promise<SimpleTask[]> {
+  const tasks = await createSimpleTasks(context);
+  return tasks;
 }
 
 async function loadTasks(context: AppContext): Promise<Task[]> {

@@ -42,11 +42,18 @@ export interface ChildLoggerConfig {
   modulePrefix?: string;
 }
 
-export function createChildLogger(config: ChildLoggerConfig): Logger {
-  return defaultLogger.child(config);
-}
-
 export const logger = createChildLogger({
   moduleId: 'global',
   modulePrefix: '☄',
 });
+
+export function createChildLoggerWith(
+  config: ChildLoggerConfig,
+  loggerParent: Logger,
+): Logger {
+  return loggerParent.child(config);
+}
+
+export function createChildLogger(config: ChildLoggerConfig): Logger {
+  return createChildLoggerWith(config, defaultLogger);
+}
