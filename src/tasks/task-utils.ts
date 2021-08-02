@@ -1,15 +1,17 @@
-import { Function2 } from 'lodash';
+import { Function0, Function3 } from 'lodash';
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { createChildLoggerWith } from '../utils/logger';
+
+export type IsStopped = Function0<boolean>;
 
 export async function makeIntervalTask(
   interval: number, // in millseconds
   name: string,
   context: AppContext,
   loggerParent: Logger,
-  handlerFn: Function2<AppContext, Logger, Promise<void>>,
+  handlerFn: Function3<AppContext, Logger, IsStopped, Promise<void>>,
 ): Promise<SimpleTask> {
   if (interval <= 0) {
     throw new Error('invalid arg, interval should be greater than 0');
@@ -23,7 +25,7 @@ export async function makeIntervalTask(
       return;
     }
     try {
-      await handlerFn(context, logger);
+      await handlerFn(context, logger, () => stopped);
     } finally {
       if (!stopped) {
         timer = setTimeout(doInterval, interval);

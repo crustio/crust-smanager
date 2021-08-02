@@ -7,21 +7,29 @@ import { Logger } from 'winston';
 import { createFileOrderOperator } from '../db/file-record';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
-import { makeIntervalTask } from './task-utils';
+import { IsStopped, makeIntervalTask } from './task-utils';
 
-async function handleCleanup(context: AppContext, logger: Logger) {
+async function handleCleanup(
+  context: AppContext,
+  logger: Logger,
+  isStopped: IsStopped,
+) {
   const { database, sworkerApi } = context;
   const fileOrderOp = createFileOrderOperator(database);
 
   let filesCleaned = 0;
 
   do {
+    if (isStopped()) {
+      return;
+    }
     const files = await fileOrderOp.getPendingCleanupRecords(10);
     for (const f of files) {
       try {
         logger.info('deleting file: %s, record id: %s', f.cid, f.id);
-        await sworkerApi.delete(f.cid);
-        await fileOrderOp.updateCleanupRecordStatus(f.id, 'done');
+        const deleted = await sworkerApi.delete(f.cid);
+        const status = deleted ? 'done' : 'failed';
+        await fileOrderOp.updateCleanupRecordStatus(f.id, status);
       } catch (e) {
         logger.error('delete file %s failed', f.cid, e);
         await fileOrderOp.updateCleanupRecordStatus(f.id, 'failed');

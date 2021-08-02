@@ -6,7 +6,7 @@ export interface SDatabase {
   getConfig: (name: string) => Promise<string | null>;
 }
 
-type FileStatus = 'pending' | 'failed' | 'handled' | 'expired';
+type FileStatus = 'pending' | 'failed' | 'skipped' | 'handled' | 'expired';
 type CleanupStatus = 'pending' | 'failed' | 'done';
 
 export interface FileRecord {
