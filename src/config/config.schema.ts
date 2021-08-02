@@ -15,6 +15,12 @@ const ipfsConfigSchema = Joi.object().keys({
   endPoint: Joi.string().required(),
 });
 
+const nodeConfigSchema = Joi.object().keys({
+  account: Joi.string().required(),
+  role: Joi.string().allow('member', 'isolation'),
+  nodeId: Joi.number().default(0).min(0),
+});
+
 const telemetryConfigSchema = Joi.object().keys({
   endPoint: Joi.string().required(),
 });
@@ -25,19 +31,25 @@ const strategyWeightsSchema = Joi.object().keys({
   random: Joi.number().default(10),
 });
 
+const schedulerConfig = Joi.object().keys({
+  strategy: Joi.alternatives(
+    'default',
+    'srdFirst',
+    'newFileFirst',
+    strategyWeightsSchema,
+  ).default('default'),
+  maxPendingTasks: Joi.number().min(1).default(2),
+});
+
 const configSchema = Joi.object()
   .keys({
     chain: chainConfigSchema.required(),
     sworker: sworkerConfigSchema.required(),
     ipfs: ipfsConfigSchema.required(),
+    node: nodeConfigSchema.required(),
     telemetry: telemetryConfigSchema.required(),
     dataDir: Joi.string().default('data').required(),
-    strategy: Joi.alternatives(
-      'default',
-      'srdFirst',
-      'newFileFirst',
-      strategyWeightsSchema,
-    ).default('default'),
+    scheduler: schedulerConfig.required(),
   })
   .unknown();
 

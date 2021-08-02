@@ -61,7 +61,10 @@ function getNormalizedWeights(strategy: StrategyConfig): StrategyWeights {
 export function normalizeConfig(config: SManagerConfig): NormalizedConfig {
   return {
     ...config,
-    strategy: getNormalizedWeights(config.strategy),
+    scheduler: {
+      ...config.scheduler,
+      strategy: getNormalizedWeights(config.scheduler.strategy),
+    },
   };
 }
 

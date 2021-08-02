@@ -20,6 +20,7 @@ type NodeRole = 'member' | 'isolation';
 export interface NodeConfig {
   account: string;
   role: NodeRole;
+  nodeId: number;
 }
 
 export interface StrategyWeights {
@@ -30,6 +31,11 @@ export interface StrategyWeights {
 
 type StrategyConfig = 'default' | 'srdFirst' | 'newFileFirst' | StrategyWeights;
 
+export interface SchedulerConfig {
+  strategy: StrategyConfig;
+  maxPendingTasks: number;
+}
+
 export interface SManagerConfig {
   chain: ChainConfig;
   sworker: SworkerConfig;
@@ -37,9 +43,14 @@ export interface SManagerConfig {
   node: NodeConfig;
   telemetry: TelemetryConfig;
   dataDir: string;
-  strategy: StrategyConfig;
+  scheduler: SchedulerConfig;
+}
+
+export interface NormalizedSchedulerConfig {
+  strategy: StrategyWeights;
+  maxPendingTasks: number;
 }
 
 export interface NormalizedConfig extends SManagerConfig {
-  strategy: StrategyWeights;
+  scheduler: NormalizedSchedulerConfig;
 }

@@ -17,48 +17,61 @@ const defaultConfig: SManagerConfig = {
   node: {
     account: 'mock',
     role: 'member',
+    nodeId: 0,
   },
   telemetry: {
     endPoint: 'telemetry',
   },
   dataDir: 'data',
-  strategy: 'default',
+  scheduler: {
+    strategy: 'default',
+    maxPendingTasks: 1,
+  },
 };
 
 describe('config validation', () => {
   // Assert if setTimeout was called properly
   it('load good config', () => {
     expect(validateConfig(defaultConfig)).toStrictEqual(defaultConfig);
-    const srdStrategey = {
+    const srdStrategey: SManagerConfig = {
       ...defaultConfig,
-      strategy: 'srdFirst',
+      scheduler: {
+        strategy: 'srdFirst',
+        maxPendingTasks: 2,
+      },
     };
-    expect(validateConfig(srdStrategey).strategy).toBe('srdFirst');
+    expect(validateConfig(srdStrategey).scheduler.strategy).toBe('srdFirst');
   });
 
   it('load custom weights', () => {
     const customWeights: SManagerConfig = {
       ...defaultConfig,
-      strategy: {
-        srdFirst: 1,
-        newFileFirst: 1,
-        random: 1,
+      scheduler: {
+        strategy: {
+          srdFirst: 1,
+          newFileFirst: 1,
+          random: 1,
+        },
+        maxPendingTasks: 1,
       },
     };
-    expect(validateConfig(customWeights).strategy).toStrictEqual({
+    expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
       srdFirst: 1,
       newFileFirst: 1,
       random: 1,
     });
 
-    const config = _.omit(customWeights, 'strategy');
-    expect(validateConfig(config).strategy).toBe('default');
+    const config = _.omit(customWeights, 'scheduler.strategy');
+    expect(validateConfig(config).scheduler.strategy).toBe('default');
   });
 
   it('fail with invalid config', () => {
-    const config = {
+    const config: SManagerConfig = {
       ...defaultConfig,
-      strategy: 'test',
+      scheduler: {
+        strategy: 'test' as any, // eslint-disable-line
+        maxPendingTasks: 1,
+      },
     };
     expect(() => validateConfig(config)).toThrow();
     const configWithoutChain = _.omit(defaultConfig, 'chain');
@@ -68,13 +81,16 @@ describe('config validation', () => {
   it('normalize weights', () => {
     const config: SManagerConfig = {
       ...defaultConfig,
-      strategy: {
-        srdFirst: 10,
-        newFileFirst: 10,
-        random: 5,
+      scheduler: {
+        strategy: {
+          srdFirst: 10,
+          newFileFirst: 10,
+          random: 5,
+        },
+        maxPendingTasks: 2,
       },
     };
-    expect(normalizeConfig(config).strategy).toStrictEqual({
+    expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
       srdFirst: 40,
       newFileFirst: 40,
       random: 20,

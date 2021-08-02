@@ -17,5 +17,7 @@
     "endPoint": "telemetry"
   },
   "dataDir": "data",
-  "strategy": "default"
+  "scheudler": {
+    "strategy": "default"
+  }
 }
