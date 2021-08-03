@@ -39,6 +39,10 @@ const schedulerConfig = Joi.object().keys({
     strategyWeightsSchema,
   ).default('default'),
   maxPendingTasks: Joi.number().min(1).default(2),
+  minFileSize: Joi.number().min(0).default(0),
+  maxFileSize: Joi.number().min(0).default(0),
+  minReplicas: Joi.number().min(0).default(0),
+  maxReplicas: Joi.number().min(0).default(0),
 });
 
 const configSchema = Joi.object()

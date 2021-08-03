@@ -6,7 +6,7 @@ import {
   EventRecord,
   SignedBlock,
 } from '@polkadot/types/interfaces';
-import { hexToString, parseObj, sleep } from '../utils';
+import { bytesToMb, hexToString, parseObj, sleep } from '../utils';
 import { typesBundleForPolkadot, crustTypes } from '@crustio/type-definitions';
 import _ from 'lodash';
 import { SLOT_LENGTH } from '../utils/consts';
@@ -325,7 +325,7 @@ export default class CrustApi {
     const exData = ex.method.args as any; // eslint-disable-line
     return {
       cid,
-      size: exData[1].toNumber(),
+      size: bytesToMb(exData[1].toNumber()),
       // tips < 0.000001 will be zero
       tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
       owner: ex.signer.toString(),

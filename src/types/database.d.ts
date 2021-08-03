@@ -1,12 +1,21 @@
 import { Dayjs } from 'dayjs';
 import { FileInfo } from '../chain';
 import { Indexer } from './indexing';
+import { PullingStrategy } from './smanager-config';
 
 export interface SDatabase {
   getConfig: (name: string) => Promise<string | null>;
 }
 
-type FileStatus = 'pending' | 'failed' | 'skipped' | 'handled' | 'expired';
+type FileStatus =
+  | 'new'
+  | 'pending_replica'
+  | 'insufficient_space'
+  | 'invalid'
+  | 'failed'
+  | 'skipped'
+  | 'handled'
+  | 'expired';
 type CleanupStatus = 'pending' | 'failed' | 'done';
 
 export interface FileRecord {
@@ -44,6 +53,10 @@ export interface DbOrderOperator {
   ) => Promise<{ newFiles: number; updated: number }>;
   getFileInfo: (cid: string, indexer: Indexer) => Promise<FileRecord | null>;
   getFileInfos: (cids: string[], indexer: Indexer) => Promise<FileRecord[]>;
+  updateFileInfoStatus: (
+    id: number,
+    status: FileStatus,
+  ) => Promise<DbWriteResult>;
   createCleanupRecord: (cid: string) => Promise<void>;
   getPendingCleanupRecords: (count: number) => Promise<FileCleanupRecord[]>;
   deleteCleanupRecords: (cids: string[]) => Promise<void>;
@@ -51,6 +64,7 @@ export interface DbOrderOperator {
     id: number,
     status: CleanupStatus,
   ) => Promise<void>;
+  getPendingFileRecord: (indexer: Indexer | null) => DbResult<FileRecord>;
 }
 
 type DbResult<T> = Promise<T | null>;
@@ -69,4 +83,26 @@ export interface ConfigOperator {
 export interface LatestBlockTime {
   block: number;
   time: number;
+}
+
+type PinStatus = 'sealing' | 'failed' | 'sealed';
+export interface PinRecord {
+  id: number;
+  cid: string;
+  size: number;
+  status: PinStatus;
+  last_updated: number;
+  pin_at: number;
+  pin_by: PullingStrategy;
+}
+
+export interface PinRecordOperator {
+  getSealingInfo: () => DbResult<[number, number]>;
+  addPinRecord: (
+    cid: string,
+    size: number,
+    pinBy: PullingStrategy,
+  ) => DbWriteResult;
+  getPinRecordsByCid: (cid: string) => DbResult<PinRecord[]>;
+  updatePinRecordStatus: (id: number, statu: PinStatus) => DbWriteResult;
 }

@@ -129,6 +129,18 @@ async function createPinRecordTable(sequelize: QueryInterface) {
           type: DataTypes.STRING,
           allowNull: false,
         },
+        size: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
+        status: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+        last_updated: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
         pin_at: {
           type: DataTypes.INTEGER,
           allowNull: false,
@@ -143,6 +155,9 @@ async function createPinRecordTable(sequelize: QueryInterface) {
       },
     );
     await sequelize.addIndex('pin_record', ['cid'], {
+      transaction,
+    });
+    await sequelize.addIndex('pin_record', ['status'], {
       transaction,
     });
     await sequelize.addIndex('pin_record', ['pin_at'], {

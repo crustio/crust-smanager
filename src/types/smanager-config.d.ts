@@ -23,17 +23,19 @@ export interface NodeConfig {
   nodeId: number;
 }
 
-export interface StrategyWeights {
-  srdFirst: number;
-  newFileFirst: number;
-  random: number;
-}
+type PullingStrategy = 'random' | 'srdFirst' | 'newFileFirst';
+
+export type StrategyWeights = { [key in PullingStrategy]: number };
 
 type StrategyConfig = 'default' | 'srdFirst' | 'newFileFirst' | StrategyWeights;
 
 export interface SchedulerConfig {
   strategy: StrategyConfig;
   maxPendingTasks: number;
+  minFileSize: number; // in MB
+  maxFileSize: number; // in MB
+  minReplicas: number; // min replicas for chainDb indexer
+  maxReplicas: number; // max replicas limit for all indexer
 }
 
 export interface SManagerConfig {
@@ -46,7 +48,7 @@ export interface SManagerConfig {
   scheduler: SchedulerConfig;
 }
 
-export interface NormalizedSchedulerConfig {
+export interface NormalizedSchedulerConfig extends SchedulerConfig {
   strategy: StrategyWeights;
   maxPendingTasks: number;
 }

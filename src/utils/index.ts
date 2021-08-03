@@ -83,3 +83,12 @@ export function lettersToNum(s: string): number {
 export function getTimestamp(): number {
   return dayjs().unix();
 }
+
+const MBBase = 1024 * 1024;
+export function bytesToMb(bytes: number): number {
+  return bytes / MBBase;
+}
+
+export function gbToMb(gb: number): number {
+  return gb / 1024;
+}

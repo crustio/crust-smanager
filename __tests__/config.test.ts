@@ -26,6 +26,10 @@ const defaultConfig: SManagerConfig = {
   scheduler: {
     strategy: 'default',
     maxPendingTasks: 1,
+    minFileSize: 0,
+    maxFileSize: 0,
+    minReplicas: 0,
+    maxReplicas: 0,
   },
 };
 
@@ -38,6 +42,10 @@ describe('config validation', () => {
       scheduler: {
         strategy: 'srdFirst',
         maxPendingTasks: 2,
+        minFileSize: 0,
+        maxFileSize: 0,
+        minReplicas: 0,
+        maxReplicas: 0,
       },
     };
     expect(validateConfig(srdStrategey).scheduler.strategy).toBe('srdFirst');
@@ -53,6 +61,10 @@ describe('config validation', () => {
           random: 1,
         },
         maxPendingTasks: 1,
+        minFileSize: 0,
+        maxFileSize: 0,
+        minReplicas: 0,
+        maxReplicas: 0,
       },
     };
     expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
@@ -71,6 +83,10 @@ describe('config validation', () => {
       scheduler: {
         strategy: 'test' as any, // eslint-disable-line
         maxPendingTasks: 1,
+        minFileSize: 0,
+        maxFileSize: 0,
+        minReplicas: 0,
+        maxReplicas: 0,
       },
     };
     expect(() => validateConfig(config)).toThrow();
@@ -88,6 +104,10 @@ describe('config validation', () => {
           random: 5,
         },
         maxPendingTasks: 2,
+        minFileSize: 0,
+        maxFileSize: 0,
+        minReplicas: 0,
+        maxReplicas: 0,
       },
     };
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({

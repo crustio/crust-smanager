@@ -14,6 +14,7 @@ import { createFileOrderOperator } from '../db/file-record';
 import { ChainFileInfo } from '../types/chain';
 import { AppContext } from '../types/context';
 import { Task } from '../types/tasks';
+import { bytesToMb } from '../utils';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { Dayjs } from '../utils/datetime';
 import { getLatestBlockTime } from './chain-time-indexer';
@@ -171,7 +172,7 @@ async function indexOneFile(
 
   const fileRecord: FileInfo = {
     cid,
-    size: fileInfo.file_size,
+    size: bytesToMb(fileInfo.file_size),
     tips: fileInfo.amount.toNumber(),
     owner: null,
     replicas: fileInfo.reported_replica_count,

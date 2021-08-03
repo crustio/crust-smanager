@@ -5,9 +5,12 @@ import { FileInfo } from '../chain';
 import {
   CleanupStatus,
   DbOrderOperator,
+  DbResult,
+  DbWriteResult,
   FileCleanupRecord,
   FileOwnerRecord,
   FileRecord,
+  FileStatus,
 } from '../types/database';
 import { Indexer } from '../types/indexing';
 import { getTimestamp } from '../utils';
@@ -41,6 +44,17 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
         getTimestamp(),
         getTimestamp(),
       ],
+    );
+  };
+
+  const updateFileInfoStatus = async (
+    id: number,
+    status: FileStatus,
+  ): Promise<DbWriteResult> => {
+    await db.run(
+      `update file_record set status = ?, last_updated = ?
+          where id = ? `,
+      [status, getTimestamp(), id],
     );
   };
 
@@ -148,6 +162,24 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     );
   };
 
+  const getPendingFileRecord = async (
+    indexer: Indexer | null,
+  ): DbResult<FileRecord> => {
+    if (indexer === null) {
+      return db.get(
+        `select id, cid, expire_at, size, amount, replicas,
+         indexer, status, last_updated, create_at
+         from file_record where status = "new" order by id desc limit 1`,
+      );
+    }
+    return db.get(
+      `select id, cid, expire_at, size, amount, replicas,
+      indexer, status, last_updated, create_at
+      from file_record  where indexer = ?  and status = "new" order by id desc limit 1`,
+      [indexer],
+    );
+  };
+
   return {
     addFiles,
     getFileInfo: async (cid, indexer) => {
@@ -158,9 +190,11 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
       return record || null;
     },
     getFileInfos,
+    updateFileInfoStatus,
     createCleanupRecord,
     deleteCleanupRecords,
     getPendingCleanupRecords,
     updateCleanupRecordStatus,
+    getPendingFileRecord,
   };
 }
