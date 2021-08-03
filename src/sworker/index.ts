@@ -1,6 +1,13 @@
 import axios, { AxiosInstance } from 'axios';
 import { parseObj } from '../utils';
 
+export interface SealInfo {
+  sealed_size: number;
+  used_time: string;
+}
+
+export type SealInfoMap = { [cid: string]: SealInfo };
+
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
 
@@ -77,15 +84,11 @@ export default class SworkerApi {
    * @returns pendings json
    */
   // eslint-disable-next-line
-  async pendings(): Promise<any | undefined> {
-    try {
-      const res = await this.sworker.get('/file/info_by_type?type=pending');
-      if (res && res.status === 200) {
-        return parseObj(res.data);
-      }
-      return undefined;
-    } catch (e) {
-      return undefined;
+  async pendings(): Promise<SealInfoMap> {
+    const res = await this.sworker.get('/file/info_by_type?type=pending');
+    if (res && res.status === 200) {
+      return parseObj(res.data);
     }
+    throw new Error(`sworker request failed with status: ${res.status}`);
   }
 }

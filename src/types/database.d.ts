@@ -103,6 +103,7 @@ export interface PinRecordOperator {
     size: number,
     pinBy: PullingStrategy,
   ) => DbWriteResult;
+  getSealingRecords: () => DbResult<PinRecord[]>;
   getPinRecordsByCid: (cid: string) => DbResult<PinRecord[]>;
   updatePinRecordStatus: (id: number, statu: PinStatus) => DbWriteResult;
 }

@@ -19,6 +19,12 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
     );
     return [count, totalSize || 0];
   };
+  const getSealingRecords = async (): DbResult<PinRecord[]> => {
+    // get all sealing one time
+    return db.all(
+      'select id, cid, size, status, pin_at, last_updated, pin_by from pin_record where status = "sealing"',
+    );
+  };
   const addPinRecord = async (
     cid: string,
     size: number,
@@ -49,6 +55,7 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
   };
   return {
     getSealingInfo,
+    getSealingRecords,
     addPinRecord,
     getPinRecordsByCid,
     updatePinRecordStatus,

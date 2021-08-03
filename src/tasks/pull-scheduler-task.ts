@@ -78,7 +78,6 @@ async function handlePulling(
       strategy,
     );
   }
-  logger.info('files pulling completed');
 }
 
 function makeStrategySelection(

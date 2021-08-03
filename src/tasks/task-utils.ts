@@ -25,8 +25,12 @@ export async function makeIntervalTask(
       return;
     }
     try {
+      logger.info('start task: "%s"', name);
       await handlerFn(context, logger, () => stopped);
+    } catch (e) {
+      logger.error('unexpected execption running task "%s"', name, e);
     } finally {
+      logger.info('task done: "%s"', name);
       if (!stopped) {
         timer = setTimeout(doInterval, interval);
       }
