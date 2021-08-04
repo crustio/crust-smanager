@@ -12,6 +12,9 @@ import { IsStopped, makeIntervalTask } from './task-utils';
 const MinSworkerSealSpeed = 10 * 1024; // 10 KB/s
 const MinSealStartTime = 2 * 60; // 2 minutes for a sealing job to start
 
+/**
+ * task to update the sealing status in the pin records table
+ */
 async function handleUpdate(
   context: AppContext,
   logger: Logger,

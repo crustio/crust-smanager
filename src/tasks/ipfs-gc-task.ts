@@ -6,6 +6,9 @@ import { IsStopped, makeIntervalTask } from './task-utils';
 // Repo GC timeout
 export const IPFSGCTimeout = 6 * 60 * 60 * 1000; // 6 hours
 
+/**
+ * task to triger ipfs repo gc periodly
+ */
 async function handleGc(
   context: AppContext,
   _logger: Logger,

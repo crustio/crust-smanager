@@ -19,6 +19,9 @@ import { makeRandomSelection } from '../utils/weighted-selection';
 import { filterFile, isDiskEnoughForFile } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
+/**
+ * task to schedule ipfs file pulling
+ */
 async function handlePulling(
   context: AppContext,
   logger: Logger,

@@ -9,6 +9,9 @@ import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
+/**
+ * task to delete files from ipfs in the cleanup records table
+ */
 async function handleCleanup(
   context: AppContext,
   logger: Logger,
