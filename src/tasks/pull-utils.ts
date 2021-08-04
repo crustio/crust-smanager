@@ -12,6 +12,7 @@ import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 10 * 1024; // 10 * 1024 MB
+export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
 type FilterFileResult =
   | 'good'
@@ -109,4 +110,13 @@ export function isDiskEnoughForFile(
   }
 
   return sworkerFree >= (fileSize + pendingSize) * 2.2;
+}
+
+/**
+ *
+ * @param size in bytes
+ * @returns return timeout in millseconds
+ */
+export function estimateIpfsPinTimeout(size: number /** in bytes */) {
+  return BasePinTimeout + (size / 1024 / 200) * 1000;
 }

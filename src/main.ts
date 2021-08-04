@@ -102,12 +102,16 @@ async function startChain(config: NormalizedConfig) {
 async function waitChainSynced(context: AppContext): Promise<void> {
   const maxWait = 1000;
   let tick = 0;
+  let successCount = 0;
   logger.info('waiting for chain synced');
   while (tick < maxWait) {
     tick++;
     await Bluebird.delay(3 * 1000);
     if (!(await context.api.isSyncing())) {
-      return;
+      successCount++;
+      if (successCount > 1) {
+        return;
+      }
     }
   }
   throw new Error('time too long to wait for chain synced!');

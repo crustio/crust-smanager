@@ -169,13 +169,13 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
       return db.get(
         `select id, cid, expire_at, size, amount, replicas,
          indexer, status, last_updated, create_at
-         from file_record where status = "new" order by id desc limit 1`,
+         from file_record where status = "new" order by id asc limit 1`,
       );
     }
     return db.get(
       `select id, cid, expire_at, size, amount, replicas,
       indexer, status, last_updated, create_at
-      from file_record  where indexer = ?  and status = "new" order by id desc limit 1`,
+      from file_record  where indexer = ?  and status = "new" order by id asc limit 1`,
       [indexer],
     );
   };

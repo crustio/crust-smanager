@@ -89,6 +89,10 @@ export function bytesToMb(bytes: number): number {
   return bytes / MBBase;
 }
 
+export function mbToBytes(mb: number): number {
+  return mb * MBBase;
+}
+
 export function gbToMb(gb: number): number {
   return gb / 1024;
 }

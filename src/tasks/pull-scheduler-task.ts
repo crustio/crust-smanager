@@ -16,7 +16,11 @@ import { SimpleTask } from '../types/tasks';
 import { gbToMb } from '../utils';
 import { BlockAndTime } from '../utils/chain-math';
 import { makeRandomSelection } from '../utils/weighted-selection';
-import { filterFile, isDiskEnoughForFile } from './pull-utils';
+import {
+  estimateIpfsPinTimeout,
+  filterFile,
+  isDiskEnoughForFile,
+} from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
 /**
@@ -241,17 +245,24 @@ async function sealFile(
   await pinRecordOps.addPinRecord(record.cid, record.size, strategey);
   await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
   const { ipfsApi } = context;
-  try {
-    // don't hang here, will check the pin status later on
-    await ipfsApi.pin(record.cid, 10 * 1000);
-  } catch (e) {
-    const errStr = `${e}`;
-    if (errStr.includes('TimeoutError')) {
-      // fine
-    } else {
-      logger.error('got unexpected error while calling ipfs apis');
-    }
-  }
+  // timeout is necessay
+  ipfsApi
+    .pin(record.cid, estimateIpfsPinTimeout(record.size))
+    .then((r) => {
+      if (r) {
+        logger.info('file "%s" sealed successfuly', record.cid);
+      } else {
+        logger.warn('file "%s" sealed failed', record.cid);
+      }
+    })
+    .catch((e) => {
+      const errStr = `${e}`;
+      if (errStr.includes('TimeoutError')) {
+        // fine
+      } else {
+        logger.error('got unexpected error while calling ipfs apis');
+      }
+    });
 }
 
 export async function createPullSchedulerTask(
