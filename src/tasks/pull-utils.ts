@@ -1,7 +1,6 @@
 import BigNumber from 'bignumber.js';
 import { FileRecord } from '../types/database';
 import {
-  NodeConfig,
   NormalizedSchedulerConfig,
   PullingStrategy,
 } from '../types/smanager-config';
@@ -9,6 +8,7 @@ import IpfsHttpClient from 'ipfs-http-client';
 import { bytesToMb } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
+import { GroupInfo } from '../types/context';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 10 * 1024; // 10 * 1024 MB
@@ -40,12 +40,15 @@ export function filterFile(
   record: FileRecord,
   strategey: PullingStrategy,
   lastBlockTime: BlockAndTime,
-  nodeConfig: NodeConfig,
+  groupInfo: GroupInfo,
   config: NormalizedSchedulerConfig,
 ): FilterFileResult {
   try {
     const bn = cidToBigNumber(record.cid);
-    if (nodeConfig.nodeId > 0 && !bn.mod(nodeConfig.nodeId).eq(0)) {
+    if (
+      groupInfo.totalMembers > 0 &&
+      !bn.mod(groupInfo.totalMembers).eq(groupInfo.nodeIndex)
+    ) {
       return 'nodeSkipped';
     }
   } catch (ex) {
@@ -117,6 +120,6 @@ export function isDiskEnoughForFile(
  * @param size in bytes
  * @returns return timeout in millseconds
  */
-export function estimateIpfsPinTimeout(size: number /** in bytes */) {
+export function estimateIpfsPinTimeout(size: number /** in bytes */): number {
   return BasePinTimeout + (size / 1024 / 200) * 1000;
 }

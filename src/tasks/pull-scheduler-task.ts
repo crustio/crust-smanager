@@ -32,14 +32,13 @@ async function handlePulling(
   isStopped: IsStopped,
 ): Promise<void> {
   const pickStrategy = makeStrategySelection(context);
-  const nodeId = context.config.node.nodeId;
   const pinRecordOps = createPinRecordOperator(context.database);
   const { config, database } = context;
-
-  logger.info('files pulling started, node id: %d', nodeId);
   if (!(await isReady(context, logger))) {
     return;
   }
+
+  logger.info('files pulling started');
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
   for (let i = 0; i < maxFilesPerRound && !isStopped(); i++) {
@@ -92,6 +91,10 @@ async function handlePulling(
 
 async function isReady(context: AppContext, logger: Logger): Promise<boolean> {
   const { config, sworkerApi } = context;
+  if (!context.groupInfo) {
+    logger.info('group info not loaded, skip this round');
+    return false;
+  }
   if (config.scheduler.minSrdRatio > 0) {
     const workload = await sworkerApi.workload();
     const total = workload.srd.srd_complete + workload.srd.disk_available;
@@ -160,7 +163,7 @@ async function getOneFileByStrategy(
       record,
       strategy,
       blockAndTime,
-      context.config.node,
+      context.groupInfo,
       context.config.scheduler,
     );
     switch (status) {

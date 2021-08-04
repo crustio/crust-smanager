@@ -47,6 +47,7 @@ async function main() {
     database,
     ipfsApi,
     sworkerApi,
+    groupInfo: null,
   };
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);

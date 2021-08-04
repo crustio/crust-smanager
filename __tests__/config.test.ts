@@ -17,7 +17,6 @@ const defaultConfig: SManagerConfig = {
   node: {
     account: 'mock',
     role: 'member',
-    nodeId: 0,
   },
   telemetry: {
     endPoint: 'telemetry',

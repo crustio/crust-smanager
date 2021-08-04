@@ -20,7 +20,6 @@ type NodeRole = 'member' | 'isolation';
 export interface NodeConfig {
   account: string;
   role: NodeRole;
-  nodeId: number;
 }
 
 type PullingStrategy = 'random' | 'srdFirst' | 'newFileFirst';

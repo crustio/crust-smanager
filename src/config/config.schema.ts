@@ -18,7 +18,6 @@ const ipfsConfigSchema = Joi.object().keys({
 const nodeConfigSchema = Joi.object().keys({
   account: Joi.string().required(),
   role: Joi.string().allow('member', 'isolation'),
-  nodeId: Joi.number().default(0).min(0),
 });
 
 const telemetryConfigSchema = Joi.object().keys({

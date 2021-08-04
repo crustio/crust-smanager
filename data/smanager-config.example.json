@@ -18,6 +18,7 @@
   },
   "dataDir": "data",
   "scheudler": {
+    "minSrdRatio": 70,
     "strategy": "default"
   }
 }
