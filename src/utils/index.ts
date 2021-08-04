@@ -92,3 +92,7 @@ export function bytesToMb(bytes: number): number {
 export function gbToMb(gb: number): number {
   return gb / 1024;
 }
+
+export function toQuotedList<T>(status: T[]): string {
+  return status.map((s) => `"${s}"`).join(',');
+}

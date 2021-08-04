@@ -1,9 +1,10 @@
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
-import { getTimestamp } from '../utils';
+import { getTimestamp, toQuotedList } from '../utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 import { Dayjs } from '../utils/datetime';
+import { FileStatus } from '../types/database';
 
 const MaxFilePendingTime = Dayjs.duration({
   months: 1,
@@ -12,6 +13,9 @@ const MaxFilePendingTime = Dayjs.duration({
 const MinFileRetryInterval = Dayjs.duration({
   minutes: 30,
 }).asSeconds();
+
+const RetryableStatus: FileStatus[] = ['pending_replica', 'insufficient_space'];
+const PendingStatus: FileStatus[] = ['new', ...RetryableStatus];
 
 async function handleRetry(
   context: AppContext,
@@ -26,14 +30,14 @@ async function handleRetry(
 
   await database.run(
     `update file_record set status = "failed"
-    where status in ("new", "pending_replica", "insufficient_space")
+    where status in (${toQuotedList(PendingStatus)})
     and create_at < ?`,
     [maxCreateTime],
   );
 
   await database.run(
     `update file_record set status = "new"
-    where status in ("pending_replica", "insufficient_space")
+    where status in (${toQuotedList(RetryableStatus)})
     and last_updated < ?`,
     [maxRetryTime],
   );
@@ -43,7 +47,7 @@ export async function createFileRetryTask(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  const fileRetryInterval = 5 * 1000; // TODO: make it configurable
+  const fileRetryInterval = 30 * 60 * 1000; // 30 minutes
   return makeIntervalTask(
     fileRetryInterval,
     'files-retry',
