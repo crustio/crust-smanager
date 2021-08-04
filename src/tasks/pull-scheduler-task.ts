@@ -33,7 +33,7 @@ async function handlePulling(
   const { config, database } = context;
 
   logger.info('files pulling started, node id: %d', nodeId);
-  if (!(await isSWorkerReady(context, logger))) {
+  if (!(await isReady(context, logger))) {
     return;
   }
   const maxFilesPerRound = 100;
@@ -84,6 +84,23 @@ async function handlePulling(
       strategy,
     );
   }
+}
+
+async function isReady(context: AppContext, logger: Logger): Promise<boolean> {
+  const { config, sworkerApi } = context;
+  if (config.scheduler.minSrdRatio > 0) {
+    const workload = await sworkerApi.workload();
+    const total = workload.srd.srd_complete + workload.srd.disk_available;
+    const srdRatio = total > 0 ? (workload.srd.srd_complete * 100) / total : 0;
+    if (srdRatio < config.scheduler.minSrdRatio) {
+      logger.info(
+        'current srd ratio: "%d" less than min srd ratio, skip this round',
+        srdRatio,
+      );
+      return false;
+    }
+  }
+  return await isSWorkerReady(context, logger);
 }
 
 async function isSWorkerReady(

@@ -32,6 +32,7 @@ type StrategyConfig = 'default' | 'srdFirst' | 'newFileFirst' | StrategyWeights;
 export interface SchedulerConfig {
   strategy: StrategyConfig;
   maxPendingTasks: number;
+  minSrdRatio: number; // percent
   minFileSize: number; // in MB
   maxFileSize: number; // in MB
   minReplicas: number; // min replicas for chainDb indexer

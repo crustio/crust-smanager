@@ -8,6 +8,15 @@ export interface SealInfo {
 
 export type SealInfoMap = { [cid: string]: SealInfo };
 
+export interface SrdInfo {
+  srd_complete: number;
+  disk_available: number;
+  sys_disk_available: number;
+}
+export interface WorkloadInfo {
+  srd: SrdInfo;
+}
+
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
 
@@ -58,6 +67,14 @@ export default class SworkerApi {
     }
   }
 
+  async workload(): Promise<WorkloadInfo> {
+    const res = await this.sworker.get('/workload');
+    if (!res || res.status !== 200) {
+      throw new Error(`invalid sworker response: ${res}`);
+    }
+    return parseObj(res.data);
+  }
+
   /// READ methods
   /**
    * Query local free storage size
@@ -65,17 +82,11 @@ export default class SworkerApi {
    * @throws sWorker api error | timeout
    */
   async free(): Promise<[number, number]> {
-    const res = await this.sworker.get('/workload');
-
-    if (res && res.status === 200) {
-      const body = parseObj(res.data) as any; // eslint-disable-line
-      return [
-        Number(body.srd['srd_complete']) + Number(body.srd['disk_available']),
-        Number(body.srd['sys_disk_available']),
-      ];
-    }
-
-    return [0, 0];
+    const workload = await this.workload();
+    return [
+      Number(workload.srd.srd_complete) + Number(workload.srd.disk_available),
+      Number(workload.srd.sys_disk_available),
+    ];
   }
 
   /// READ methods

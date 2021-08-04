@@ -25,6 +25,7 @@ const defaultConfig: SManagerConfig = {
   dataDir: 'data',
   scheduler: {
     strategy: 'default',
+    minSrdRatio: 70,
     maxPendingTasks: 1,
     minFileSize: 0,
     maxFileSize: 0,
@@ -41,6 +42,7 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: 'srdFirst',
+        minSrdRatio: 70,
         maxPendingTasks: 2,
         minFileSize: 0,
         maxFileSize: 0,
@@ -60,6 +62,7 @@ describe('config validation', () => {
           newFileFirst: 1,
           random: 1,
         },
+        minSrdRatio: 70,
         maxPendingTasks: 1,
         minFileSize: 0,
         maxFileSize: 0,
@@ -82,6 +85,7 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: 'test' as any, // eslint-disable-line
+        minSrdRatio: 70,
         maxPendingTasks: 1,
         minFileSize: 0,
         maxFileSize: 0,
@@ -103,6 +107,7 @@ describe('config validation', () => {
           newFileFirst: 10,
           random: 5,
         },
+        minSrdRatio: 70,
         maxPendingTasks: 2,
         minFileSize: 0,
         maxFileSize: 0,
