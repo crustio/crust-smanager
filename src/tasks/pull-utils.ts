@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { FileRecord } from '../types/database';
+import { FileRecord, FileStatus } from '../types/database';
 import {
   NormalizedSchedulerConfig,
   PullingStrategy,
@@ -13,6 +13,12 @@ import { GroupInfo } from '../types/context';
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 10 * 1024; // 10 * 1024 MB
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
+
+export const RetryableStatus: FileStatus[] = [
+  'pending_replica',
+  'insufficient_space',
+];
+export const PendingStatus: FileStatus[] = ['new', ...RetryableStatus];
 
 type FilterFileResult =
   | 'good'

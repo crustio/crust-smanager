@@ -4,7 +4,7 @@ import { SimpleTask } from '../types/tasks';
 import { getTimestamp, toQuotedList } from '../utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 import { Dayjs } from '../utils/datetime';
-import { FileStatus } from '../types/database';
+import { PendingStatus, RetryableStatus } from './pull-utils';
 
 const MaxFilePendingTime = Dayjs.duration({
   months: 1,
@@ -13,9 +13,6 @@ const MaxFilePendingTime = Dayjs.duration({
 const MinFileRetryInterval = Dayjs.duration({
   minutes: 30,
 }).asSeconds();
-
-const RetryableStatus: FileStatus[] = ['pending_replica', 'insufficient_space'];
-const PendingStatus: FileStatus[] = ['new', ...RetryableStatus];
 
 async function handleRetry(
   context: AppContext,

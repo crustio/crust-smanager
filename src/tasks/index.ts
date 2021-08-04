@@ -7,6 +7,7 @@ import { createFileRetryTask } from './file-retry-task';
 import { createIpfsGcTask } from './ipfs-gc-task';
 import { createPullSchedulerTask } from './pull-scheduler-task';
 import { createSealStatuUpdater } from './seal-status-updater-task';
+import { createTelemetryReportTask } from './telemetry-task';
 
 /**
  * create simpile tasks which only handle start/stop
@@ -21,6 +22,7 @@ export async function createSimpleTasks(
     createPullSchedulerTask,
     createSealStatuUpdater,
     createFileRetryTask,
+    createTelemetryReportTask,
   ];
   return Bluebird.mapSeries(tasks, (t) => {
     return t(context, logger);

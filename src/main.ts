@@ -10,6 +10,7 @@ import { createSimpleTasks } from './tasks';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
 import { SimpleTask, Task } from './types/tasks';
+import { Dayjs } from './utils/datetime';
 import { logger } from './utils/logger';
 import { timeout, timeoutOrError } from './utils/promise-utils';
 
@@ -45,9 +46,10 @@ async function main() {
     api,
     config,
     database,
+    groupInfo: null,
     ipfsApi,
     sworkerApi,
-    groupInfo: null,
+    startTime: Dayjs(),
   };
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);
@@ -91,7 +93,7 @@ async function loadTasks(context: AppContext): Promise<Task[]> {
 
 async function startChain(config: NormalizedConfig) {
   logger.info(
-    'starting chain api with endpoint: %s, acocunt: %s',
+    'starting chain api with endpoint: %s, account: %s',
     config.chain.endPoint,
     config.chain.account,
   );

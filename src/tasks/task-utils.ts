@@ -31,7 +31,7 @@ export async function makeIntervalTask(
       logger.error(
         'unexpected execption running task "%s", %s',
         name,
-        JSON.stringify(e),
+        (e as Error).stack || JSON.stringify(e),
       );
     } finally {
       logger.info('task done: "%s"', name);

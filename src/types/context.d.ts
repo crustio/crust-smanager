@@ -1,3 +1,4 @@
+import { Dayjs } from 'dayjs';
 import { Database } from 'sqlite';
 import CrustApi from '../chain';
 import IpfsApi from '../ipfs';
@@ -10,6 +11,7 @@ export interface GroupInfo {
 }
 
 export interface AppContext {
+  startTime: Dayjs;
   config: NormalizedConfig;
   api: CrustApi;
   database: Database;
