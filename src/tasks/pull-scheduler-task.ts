@@ -33,6 +33,9 @@ async function handlePulling(
   const { config, database } = context;
 
   logger.info('files pulling started, node id: %d', nodeId);
+  if (!(await isSWorkerReady(context, logger))) {
+    return;
+  }
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
   for (let i = 0; i < maxFilesPerRound && !isStopped(); i++) {
@@ -81,6 +84,29 @@ async function handlePulling(
       strategy,
     );
   }
+}
+
+async function isSWorkerReady(
+  context: AppContext,
+  logger: Logger,
+): Promise<boolean> {
+  const { api } = context;
+  const sworkIdentity = await api.sworkIdentity();
+  if (!sworkIdentity) {
+    logger.warn('⚠️ Please wait your sworker to report the first work report');
+    return false;
+  }
+
+  const groupOwner = sworkIdentity.group;
+  if (!groupOwner) {
+    logger.warn('⚠️ Wait for the node to join group');
+    return false;
+  }
+  if (this.crustApi.getChainAccount() === groupOwner) {
+    logger.error("💥 Can't use owner account to configure isolation/member");
+    return false;
+  }
+  return true;
 }
 
 function makeStrategySelection(
