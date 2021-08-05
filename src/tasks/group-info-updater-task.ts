@@ -15,18 +15,19 @@ async function handleUpdate(
       logger.warn('⚠️ no sworker identity');
       return;
     }
+    logger.info('identity: %o', sworkIdentity);
     const groupOwner = sworkIdentity.group;
     if (!groupOwner) {
       logger.warn('⚠️ Wait for the node to join group');
       return;
     }
-    if (this.crustApi.getChainAccount() === groupOwner) {
+    if (api.getChainAccount() === groupOwner) {
       logger.error("💥 Can't use owner account to configure isolation/member");
       return;
     }
 
     // Get group members
-    const members = await this.crustApi.groupMembers(groupOwner);
+    const members = await api.groupMembers(groupOwner);
     members.sort();
     const nodeIndex = members.indexOf(api.getChainAccount());
     context.groupInfo = {
@@ -34,7 +35,10 @@ async function handleUpdate(
       nodeIndex,
     };
   } catch (e) {
-    logger.error('failed updating group info: %s', JSON.stringify(e));
+    logger.error(
+      'failed updating group info: %s',
+      (e as Error).stack || JSON.stringify(e),
+    );
     context.groupInfo = null;
   }
 }

@@ -172,8 +172,12 @@ export default class CrustApi {
    * Get sworker identity
    * @returns Identity or Null
    */
-  async sworkIdentity(): Promise<Identity> {
-    return parseObj(await this.api.query.swork.identities(this.chainAccount));
+  async sworkIdentity(): Promise<Identity | null> {
+    const identity = await this.api.query.swork.identities(this.chainAccount);
+    if (identity.isEmpty) {
+      return null;
+    }
+    return identity.toJSON() as Identity;
   }
 
   /**
@@ -227,7 +231,11 @@ export default class CrustApi {
    */
   async groupMembers(groupOwner: string): Promise<string[]> {
     try {
-      return parseObj(await this.api.query.swork.groups(groupOwner));
+      const data = await this.api.query.swork.groups(groupOwner);
+      if (data.isEmpty) {
+        return [];
+      }
+      return (data.toJSON() as any).members as string[]; // eslint-disable-line
     } catch (e) {
       logger.error(`💥 Get group member error: ${e}`);
       return [];
