@@ -7,13 +7,14 @@ import { createChildLoggerWith } from '../utils/logger';
 export type IsStopped = Function0<boolean>;
 
 export async function makeIntervalTask(
+  startDelay: number,
   interval: number, // in millseconds
   name: string,
   context: AppContext,
   loggerParent: Logger,
   handlerFn: Function3<AppContext, Logger, IsStopped, Promise<void>>,
 ): Promise<SimpleTask> {
-  if (interval <= 0) {
+  if (startDelay <= 0 || interval <= 0) {
     throw new Error('invalid arg, interval should be greater than 0');
   }
   const logger = createChildLoggerWith({ moduleId: name }, loggerParent);
@@ -44,7 +45,7 @@ export async function makeIntervalTask(
     name,
     start: () => {
       logger.info(`task "${name}" started`);
-      timer = setTimeout(doInterval, interval);
+      timer = setTimeout(doInterval, startDelay);
       stopped = false;
     },
     stop: async () => {

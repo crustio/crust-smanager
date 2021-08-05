@@ -46,6 +46,7 @@ export async function createFileRetryTask(
 ): Promise<SimpleTask> {
   const fileRetryInterval = 30 * 60 * 1000; // 30 minutes
   return makeIntervalTask(
+    10 * 60 * 1000,
     fileRetryInterval,
     'files-retry',
     context,

@@ -7,7 +7,7 @@ export interface BlockInfo {
 
 export interface ChainFileInfo {
   file_size: number;
-  expired_on: number;
+  expired_at: number;
   amount: BigNumber;
   reported_replica_count: number;
 }

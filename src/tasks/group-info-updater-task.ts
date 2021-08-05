@@ -45,6 +45,7 @@ export async function createGroupInfoUpdateTask(
 ): Promise<SimpleTask> {
   const updateInterval = 1 * 60 * 1000; // update group info every minute
   return makeIntervalTask(
+    5 * 1000,
     updateInterval,
     'group-info',
     context,

@@ -137,6 +137,7 @@ export async function createTelemetryReportTask(
     hours: 1,
   }).asMilliseconds();
   return makeIntervalTask(
+    30 * 1000,
     reportInterval,
     'telemetry-report',
     context,

@@ -4,6 +4,7 @@ import { SimpleTask } from '../types/tasks';
 import { createChildLogger } from '../utils/logger';
 import { createFileCleanupTask } from './file-cleanup-task';
 import { createFileRetryTask } from './file-retry-task';
+import { createGroupInfoUpdateTask } from './group-info-updater-task';
 import { createIpfsGcTask } from './ipfs-gc-task';
 import { createPullSchedulerTask } from './pull-scheduler-task';
 import { createSealStatuUpdater } from './seal-status-updater-task';
@@ -23,6 +24,7 @@ export async function createSimpleTasks(
     createSealStatuUpdater,
     createFileRetryTask,
     createTelemetryReportTask,
+    createGroupInfoUpdateTask,
   ];
   return Bluebird.mapSeries(tasks, (t) => {
     return t(context, logger);

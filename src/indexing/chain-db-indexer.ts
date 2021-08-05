@@ -120,6 +120,7 @@ async function dbIndexer(
         logger.info('no pending cids to index from db, mark indexing as done');
         await config.saveTime(KeyLastDoneTime, dayjs());
         await config.saveString(KeyLastIndexedKey, '');
+        continue;
       }
       logger.info('got %d cids to process', cids.length);
 
@@ -131,7 +132,10 @@ async function dbIndexer(
       lastIndexedKey = _.last(cids).key;
       await config.saveString(KeyLastIndexedKey, lastIndexedKey);
     } catch (e) {
-      logger.error('caught exception', e);
+      logger.error(
+        'caught exception: %s',
+        (e as Error).stack || JSON.stringify(e),
+      );
     }
   }
   logger.info('db indexer thread stopped');
@@ -144,12 +148,13 @@ async function indexOneFile(
   lastBlock: BlockAndTime,
 ): Promise<FileInfo | null> {
   const { api } = context;
-  const file = await api.chainApi().query.market.files(cid);
+  logger.info('indexing "%s"', cid);
+  const file: any = await api.chainApi().query.market.files(cid); // eslint-disable-line
   if (file.isEmpty) {
     logger.warn('file %s not exist on chain', cid);
     return null;
   }
-  const [fi] = file.toJSON() as any; // eslint-disable-line
+  const fi = file.toJSON() as any; // eslint-disable-line
   const fileInfo = {
     ...fi,
     amount: new BigNumber(fi.amount.toString()),
@@ -158,7 +163,7 @@ async function indexOneFile(
     months: 4,
   });
   const now = dayjs();
-  const expireTime = estimateTimeAtBlock(fileInfo.expired_on, lastBlock);
+  const expireTime = estimateTimeAtBlock(fileInfo.expired_at, lastBlock);
   const life = dayjs.duration(expireTime.diff(now));
   if (life.asSeconds() < MinLifeTime.asSeconds()) {
     logger.info(
@@ -176,7 +181,7 @@ async function indexOneFile(
     tips: fileInfo.amount.toNumber(),
     owner: null,
     replicas: fileInfo.reported_replica_count,
-    expiredAt: fileInfo.expired_on,
+    expiredAt: fileInfo.expired_at,
   };
   return fileRecord;
 }

@@ -24,6 +24,7 @@ export async function createIpfsGcTask(
   const ipfsInterval = 60 * 60 * 1000; // TODO: make it configurable
   return makeIntervalTask(
     ipfsInterval,
+    ipfsInterval,
     'ipfs-gc',
     context,
     loggerParent,

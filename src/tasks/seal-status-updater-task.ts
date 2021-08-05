@@ -109,8 +109,9 @@ export async function createSealStatuUpdater(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  const sealStatusUpdateInterval = 5 * 1000; // update seal status every 2 minutes
+  const sealStatusUpdateInterval = 2 * 60 * 1000; // update seal status every 2 minutes
   return makeIntervalTask(
+    1 * 60 * 1000,
     sealStatusUpdateInterval,
     'seal-updater',
     context,

@@ -49,6 +49,7 @@ export async function createFileCleanupTask(
 ): Promise<SimpleTask> {
   const fileCleanupInterval = 30 * 60 * 1000; // TODO: make it configurable
   return makeIntervalTask(
+    10 * 60 * 1000,
     fileCleanupInterval,
     'files-cleanup',
     context,

@@ -47,7 +47,7 @@ export function createConfigOps(db: Database): ConfigOperator {
     return null;
   };
   const saveTime = async (name: string, d: Dayjs): DbWriteResult => {
-    if (d.isValid()) {
+    if (!d.isValid()) {
       throw new Error('invalid date!');
     }
     const v = d.unix();

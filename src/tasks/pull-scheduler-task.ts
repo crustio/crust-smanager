@@ -35,6 +35,7 @@ async function handlePulling(
   const pinRecordOps = createPinRecordOperator(context.database);
   const { config, database } = context;
   if (!(await isReady(context, logger))) {
+    logger.info('skip pulling as node not ready');
     return;
   }
 
@@ -275,6 +276,7 @@ export async function createPullSchedulerTask(
   const pullingInterval = 5 * 60 * 1000; // trival, period run it if there is no pending files in the db
 
   return makeIntervalTask(
+    30 * 1000,
     pullingInterval,
     'files-pulling',
     context,
