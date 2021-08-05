@@ -24,7 +24,7 @@ export interface FileInfo {
   owner: string | null;
 }
 
-export type UsedInfo = typeof crustTypes.market.types.UsedInfo;
+export type MarketFileInfo = typeof crustTypes.market.types.FileInfo;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
@@ -297,7 +297,7 @@ export default class CrustApi {
    * @returns Option<UsedInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetFileUsedInfo(cid: string): Promise<UsedInfo | null> {
+  async maybeGetFileUsedInfo(cid: string): Promise<MarketFileInfo | null> {
     await this.withApiReady();
 
     try {

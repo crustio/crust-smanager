@@ -4,6 +4,7 @@ import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { PinStatus } from '../types/database';
 import { NormalizedConfig } from '../types/smanager-config';
+import { WorkloadInfo } from '../types/sworker';
 import { SimpleTask } from '../types/tasks';
 import {
   PinStats,
@@ -32,9 +33,10 @@ async function handleReport(
   }
   const stats = await collectStats(context);
   logger.info('reporting stats to telemtry: %o', stats);
-  await axios.post(telemetryUrl, stats, {
+  const resp = await axios.post(telemetryUrl, stats, {
     timeout: 10 * 1000,
   });
+  logger.info('telemetry response: %s', JSON.stringify(resp.data));
 }
 
 async function collectStats(context: AppContext): Promise<TelemetryData> {
@@ -51,7 +53,14 @@ async function collectStats(context: AppContext): Promise<TelemetryData> {
       where status = "done" and last_updated > ? `,
     [timeStart],
   );
-  const workload = await sworkerApi.workload();
+  const workload: WorkloadInfo = await sworkerApi.workload();
+  // {
+  //   srd: {
+  //     srd_complete: 0,
+  //     disk_available: 0,
+  //     sys_disk_available: 0,
+  //   },
+  // };
 
   return {
     chainAccount: account,
