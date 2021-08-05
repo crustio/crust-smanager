@@ -127,7 +127,7 @@ async function isSWorkerReady(
     logger.warn('⚠️ Wait for the node to join group');
     return false;
   }
-  if (this.crustApi.getChainAccount() === groupOwner) {
+  if (api.getChainAccount() === groupOwner) {
     logger.error("💥 Can't use owner account to configure isolation/member");
     return false;
   }
