@@ -18,7 +18,7 @@ import { timeout, timeoutOrError } from './utils/promise-utils';
 const MaxTickTimout = 15 * 1000;
 const IpfsTimeout = 8000 * 1000; // 8000s
 const SworkerTimeout = 8000 * 1000; //8000s
-const ConfigDir = process.env['SMANAGER_CONFIG'] || '';
+const ConfigFile = process.env['SMANAGER_CONFIG'] || 'smanager-config.json';
 
 /**
  * SManager tasks:
@@ -32,7 +32,7 @@ const ConfigDir = process.env['SMANAGER_CONFIG'] || '';
  */
 async function main() {
   logger.info('starting smanager');
-  const config = await loadConfig(path.join(ConfigDir, 'smanager-config.json'));
+  const config = await loadConfig(ConfigFile);
   logger.debug('smanager config loaded: %o', config);
   const api = await timeoutOrError(
     'connect to chain',
