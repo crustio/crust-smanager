@@ -1,5 +1,6 @@
 import Bluebird from 'bluebird';
 import _ from 'lodash';
+import path from 'path';
 import CrustApi from './chain';
 import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
@@ -17,6 +18,7 @@ import { timeout, timeoutOrError } from './utils/promise-utils';
 const MaxTickTimout = 15 * 1000;
 const IpfsTimeout = 8000 * 1000; // 8000s
 const SworkerTimeout = 8000 * 1000; //8000s
+const ConfigDir = process.env['SMANAGER_CONFIG'] || '';
 
 /**
  * SManager tasks:
@@ -30,7 +32,7 @@ const SworkerTimeout = 8000 * 1000; //8000s
  */
 async function main() {
   logger.info('starting smanager');
-  const config = await loadConfig('smanager-config.json');
+  const config = await loadConfig(path.join(ConfigDir, 'smanager-config.json'));
   logger.debug('smanager config loaded: %o', config);
   const api = await timeoutOrError(
     'connect to chain',
