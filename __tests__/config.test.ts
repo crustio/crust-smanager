@@ -56,8 +56,8 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: {
-          srdFirst: 1,
-          newFileFirst: 1,
+          existedFilesWeight: 1,
+          newFilesWeight: 1,
         },
         minSrdRatio: 70,
         maxPendingTasks: 1,
@@ -68,8 +68,8 @@ describe('config validation', () => {
       },
     };
     expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
-      srdFirst: 1,
-      newFileFirst: 1,
+      existedFilesWeight: 1,
+      newFilesWeight: 1,
     });
 
     const config = _.omit(customWeights, 'scheduler.strategy');
@@ -99,8 +99,8 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: {
-          srdFirst: 10,
-          newFileFirst: 10,
+          existedFilesWeight: 10,
+          newFilesWeight: 10,
         },
         minSrdRatio: 70,
         maxPendingTasks: 2,
@@ -111,8 +111,8 @@ describe('config validation', () => {
       },
     };
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
-      srdFirst: 50,
-      newFileFirst: 50,
+      existedFilesWeight: 50,
+      newFilesWeight: 50,
     });
   });
 });

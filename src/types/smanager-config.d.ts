@@ -21,7 +21,7 @@ export interface NodeConfig {
   role: NodeRole;
 }
 
-type PullingStrategy = 'srdFirst' | 'newFileFirst';
+type PullingStrategy = 'existedFilesWeight' | 'newFilesWeight';
 
 export type StrategyWeights = { [key in PullingStrategy]: number };
 

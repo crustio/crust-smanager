@@ -19,8 +19,8 @@
   "scheduler": {
     "minSrdRatio": 0,
     "strategy": {
-      "srdFirst": 10,
-      "newFileFirst": 10
+      "existedFilesWeight": 10,
+      "newFilesWeight": 20
     }
   }
 }

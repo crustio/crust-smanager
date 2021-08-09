@@ -228,9 +228,9 @@ async function getPendingFileByStrategy(
   strategy: PullingStrategy,
 ): DbResult<FileRecord> {
   switch (strategy) {
-    case 'newFileFirst':
+    case 'newFilesWeight':
       return fileOrderOps.getPendingFileRecord('chainEvent');
-    case 'srdFirst':
+    case 'existedFilesWeight':
       return fileOrderOps.getPendingFileRecord('dbScan');
   }
 }

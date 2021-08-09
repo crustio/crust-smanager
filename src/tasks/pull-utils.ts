@@ -69,7 +69,7 @@ export function filterFile(
     return 'sizeTooLarge';
   }
   if (
-    strategey === 'srdFirst' &&
+    strategey === 'existedFilesWeight' &&
     config.minReplicas > 0 &&
     record.replicas < config.minReplicas
   ) {
