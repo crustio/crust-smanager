@@ -1,24 +1,28 @@
 {
   "chain": {
-    "account": "test",
-    "endPoint": "chain"
+    "account": "crustaccount",
+    "endPoint": "ws://localhost:19944"
   },
   "sworker": {
-    "endPoint": "sworker"
+    "endPoint": "http://localhost:12222"
   },
   "ipfs": {
-    "endPoint": "ipfs"
+    "endPoint": "http://localhost:5001"
   },
   "node": {
     "account": "mock",
     "role": "member"
   },
   "telemetry": {
-    "endPoint": "telemetry"
+    "endPoint": "http://124.156.129.198:27654"
   },
   "dataDir": "data",
-  "scheudler": {
-    "minSrdRatio": 70,
-    "strategy": "default"
+  "scheduler": {
+    "minSrdRatio": 0,
+    "strategy": {
+      "srdFirst": 10,
+      "newFileFirst": 10,
+      "random": 5
+    }
   }
 }
