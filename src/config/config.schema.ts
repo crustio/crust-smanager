@@ -61,7 +61,9 @@ const logger = createChildLogger({
 });
 
 export function validateConfig(config: unknown): SManagerConfig {
-  const r = configSchema.validate(config);
+  const r = configSchema.validate(config, {
+    allowUnknown: true,
+  });
   if (r.error) {
     logger.error('invalid config', r.error.message);
     for (const details of r.error.details) {
