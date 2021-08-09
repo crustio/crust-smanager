@@ -1,5 +1,6 @@
-import { DataTypes, QueryInterface, Transaction } from 'sequelize';
+import { DataTypes, QueryInterface } from 'sequelize';
 import { MigrationFn } from 'umzug';
+import { withTransaction } from '../db-utils';
 
 export const up: MigrationFn<QueryInterface> = async ({
   context: sequelize,
@@ -12,16 +13,6 @@ export const down: MigrationFn<QueryInterface> = async ({
 }) => {
   await sequelize.dropTable('cleanup_record');
 };
-
-async function withTransaction<T>(
-  sequelize: QueryInterface,
-  func: (tras: Transaction) => T,
-): Promise<T> {
-  const transaction = await sequelize.sequelize.transaction();
-  const v = await func(transaction);
-  await transaction.commit();
-  return v;
-}
 
 async function createCleanupRecordTable(sequelize: QueryInterface) {
   await withTransaction(sequelize, async (transaction) => {

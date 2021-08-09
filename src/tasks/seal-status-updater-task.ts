@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import { Logger } from 'winston';
 import { createPinRecordOperator } from '../db/pin-record';
-import IpfsApi from '../ipfs';
 import SworkerApi from '../sworker';
 import { AppContext } from '../types/context';
 import { PinRecord, PinRecordOperator } from '../types/database';
@@ -11,7 +10,7 @@ import { getTimestamp } from '../utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
 const MinSworkerSealSpeed = 10 * 1024; // 10 KB/s
-const MinSealStartTime = 2 * 60; // 2 minutes for a sealing job to start
+const MinSealStartTime = 10 * 60; // 10 minutes for a sealing job to start
 
 /**
  * task to update the sealing status in the pin records table
@@ -50,22 +49,39 @@ async function checkAndUpdateStatus(
     );
     return;
   }
-  const { ipfsApi, sworkerApi } = context;
+  if (
+    record.last_check_time > 0 &&
+    now - record.last_check_time < MinSealStartTime
+  ) {
+    logger.info('file "%s" was checked recently, skip checking', record.cid);
+    return;
+  }
+  const lastCheckedTime =
+    record.last_check_time > 0 ? record.last_check_time : record.pin_at;
+  const duraitonSinceLastCheck = now - lastCheckedTime;
+  const { sworkerApi } = context;
   // cid in seal info map, means it's being sealed
   // need to check the seal progress
   if (_.has(sealInfoMap, record.cid)) {
+    const sealedSize = sealInfoMap[record.cid].sealed_size;
     const sealSpeed =
-      sealInfoMap[record.cid].sealed_size / 1024 / totalTimeUsed;
+      (sealedSize - record.sealed_size) / 1024 / duraitonSinceLastCheck;
     if (sealSpeed < MinSworkerSealSpeed) {
       logger.warn(
         'sealing is too slow for file "%s", cancel sealing',
         record.cid,
       );
       await makeRecordAsFailed(record, pinRecordOps, sworkerApi);
+    } else {
+      await pinRecordOps.updatePinRecordSealStatus(
+        record.id,
+        sealedSize,
+        'sealing',
+      );
     }
   } else {
     // cid not in seal info map, ether means sealing is done or sealing is not started
-    const done = await isSealDone(record.cid, ipfsApi, logger);
+    const done = await isSealDone(record.cid, sworkerApi, logger);
     if (!done) {
       logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
       await makeRecordAsFailed(record, pinRecordOps, sworkerApi);
@@ -87,21 +103,16 @@ async function makeRecordAsFailed(
 
 async function isSealDone(
   cid: string,
-  ipfsApi: IpfsApi,
+  sworkerApi: SworkerApi,
   logger: Logger,
 ): Promise<boolean> {
   try {
     // ipfs pin returns quickly if the sealing is done, otherwise it will timeout
-    const ret = await ipfsApi.pin(cid, 10 * 1000);
-    return !!ret;
+    const ret = await sworkerApi.getSealInfo(cid);
+    return ret && (ret.type === 'valid' || ret.type === 'lost');
   } catch (ex) {
-    const errStr = `${ex}`;
-    if (errStr.includes('TimeoutError')) {
-      return false;
-    } else {
-      logger.error('unexpected error while calling ipfs apis');
-      throw ex;
-    }
+    logger.error('unexpected error while calling sworker api');
+    throw ex;
   }
 }
 

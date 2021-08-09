@@ -94,6 +94,8 @@ export interface PinRecord {
   last_updated: number;
   pin_at: number;
   pin_by: PullingStrategy;
+  sealed_size: number;
+  last_check_time: number;
 }
 
 export interface PinRecordOperator {
@@ -106,4 +108,9 @@ export interface PinRecordOperator {
   getSealingRecords: () => DbResult<PinRecord[]>;
   getPinRecordsByCid: (cid: string) => DbResult<PinRecord[]>;
   updatePinRecordStatus: (id: number, statu: PinStatus) => DbWriteResult;
+  updatePinRecordSealStatus: (
+    id: number,
+    sealedSize,
+    status: PinStatus,
+  ) => DbWriteResult;
 }

@@ -1,5 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
-import { SealInfoMap, WorkloadInfo } from '../types/sworker';
+import qs from 'querystring';
+import {
+  QuerySealInfoResult,
+  SealInfoMap,
+  SealInfoResp,
+  WorkloadInfo,
+} from '../types/sworker';
 import { parseObj } from '../utils';
 
 export default class SworkerApi {
@@ -30,6 +36,24 @@ export default class SworkerApi {
       return res.status === 200;
     } catch (e) {
       return false;
+    }
+  }
+
+  async getSealInfo(cid: string): Promise<SealInfoResp | null> {
+    try {
+      const searchParams = qs.stringify({
+        cid,
+      });
+      const res = await this.sworker.get<QuerySealInfoResult>(
+        `/file/info?${searchParams}`,
+      );
+
+      if (res.status !== 200) {
+        return null;
+      }
+      return res.data[cid];
+    } catch (e) {
+      return null;
     }
   }
 
