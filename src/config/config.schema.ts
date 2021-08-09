@@ -16,7 +16,6 @@ const ipfsConfigSchema = Joi.object().keys({
 });
 
 const nodeConfigSchema = Joi.object().keys({
-  account: Joi.string().required(),
   role: Joi.string().allow('member', 'isolation'),
 });
 

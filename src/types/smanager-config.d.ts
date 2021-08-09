@@ -18,7 +18,6 @@ export interface TelemetryConfig {
 type NodeRole = 'member' | 'isolation';
 
 export interface NodeConfig {
-  account: string;
   role: NodeRole;
 }
 

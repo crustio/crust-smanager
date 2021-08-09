@@ -15,7 +15,6 @@ const defaultConfig: SManagerConfig = {
     endPoint: 'ipfs',
   },
   node: {
-    account: 'mock',
     role: 'member',
   },
   telemetry: {

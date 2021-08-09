@@ -10,7 +10,6 @@
     "endPoint": "http://localhost:5001"
   },
   "node": {
-    "account": "mock",
     "role": "member"
   },
   "telemetry": {

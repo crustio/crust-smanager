@@ -1,6 +1,5 @@
 import Bluebird from 'bluebird';
 import _ from 'lodash';
-import path from 'path';
 import CrustApi from './chain';
 import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
