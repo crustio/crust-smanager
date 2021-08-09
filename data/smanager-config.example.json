@@ -20,8 +20,7 @@
     "minSrdRatio": 0,
     "strategy": {
       "srdFirst": 10,
-      "newFileFirst": 10,
-      "random": 5
+      "newFileFirst": 10
     }
   }
 }

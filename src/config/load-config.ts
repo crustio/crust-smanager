@@ -12,19 +12,16 @@ import { logger } from '../utils/logger';
 const defaultsStrategyWeights = {
   srdFirst: 50,
   newFileFirst: 40,
-  random: 10,
 };
 
 const srdFirstStrategyWeights = {
   srdFirst: 80,
   newFileFirst: 10,
-  random: 10,
 };
 
 const newfileFirstStrategyWeights = {
   srdFirst: 10,
   newFileFirst: 80,
-  random: 10,
 };
 
 function getNormalizedWeights(strategy: StrategyConfig): StrategyWeights {
@@ -37,18 +34,13 @@ function getNormalizedWeights(strategy: StrategyConfig): StrategyWeights {
       return newfileFirstStrategyWeights;
     default: {
       // normaliz weights to percentage based weights
-      const weights = [
-        strategy.srdFirst,
-        strategy.newFileFirst,
-        strategy.random,
-      ];
+      const weights = [strategy.srdFirst, strategy.newFileFirst];
       const totalWeights = _.sum(weights);
       if (totalWeights > 0) {
         const normalized = _.map(weights, (w) => (w / totalWeights) * 100);
         return {
           srdFirst: normalized[0],
           newFileFirst: normalized[1],
-          random: normalized[2],
         };
       }
 

@@ -232,8 +232,6 @@ async function getPendingFileByStrategy(
       return fileOrderOps.getPendingFileRecord('chainEvent');
     case 'srdFirst':
       return fileOrderOps.getPendingFileRecord('dbScan');
-    case 'random':
-      return fileOrderOps.getPendingFileRecord(null);
   }
 }
 

@@ -58,7 +58,6 @@ describe('config validation', () => {
         strategy: {
           srdFirst: 1,
           newFileFirst: 1,
-          random: 1,
         },
         minSrdRatio: 70,
         maxPendingTasks: 1,
@@ -71,7 +70,6 @@ describe('config validation', () => {
     expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
       srdFirst: 1,
       newFileFirst: 1,
-      random: 1,
     });
 
     const config = _.omit(customWeights, 'scheduler.strategy');
@@ -103,7 +101,6 @@ describe('config validation', () => {
         strategy: {
           srdFirst: 10,
           newFileFirst: 10,
-          random: 5,
         },
         minSrdRatio: 70,
         maxPendingTasks: 2,
@@ -114,9 +111,8 @@ describe('config validation', () => {
       },
     };
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
-      srdFirst: 40,
-      newFileFirst: 40,
-      random: 20,
+      srdFirst: 50,
+      newFileFirst: 50,
     });
   });
 });
