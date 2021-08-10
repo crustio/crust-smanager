@@ -7,6 +7,7 @@ import { createIndexingTasks } from './indexing';
 import IpfsApi from './ipfs';
 import SworkerApi from './sworker';
 import { createSimpleTasks } from './tasks';
+import { createChainHeightLogger } from './tasks/chain-height-logger-tasks';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
 import { SimpleTask, Task } from './types/tasks';
@@ -55,7 +56,11 @@ async function main() {
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);
   try {
+    const logTask = await createChainHeightLogger(context, logger);
+    logTask.start(context);
     await waitChainSynced(context);
+    await logTask.stop();
+
     // start tasks
     _.forEach(simpleTasks, (t) => t.start(context));
     _.forEach(tasks, (t) => t.start(context));
