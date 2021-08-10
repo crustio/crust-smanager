@@ -1,11 +1,11 @@
 import { NormalizedSchedulerConfig } from './smanager-config';
-import { SrdInfo } from './sworker';
+import { SrdInfo, WorkloadInfo } from './sworker';
 
 export interface TelemetryData {
   chainAccount: string;
   smangerInfo: SMangerInfo;
   pinStats: PinStats;
-  srd: SrdStats;
+  sworker: SrdStats;
   queueStats: QueueInfo;
   cleanupStats: CleanupStats;
 }
@@ -29,7 +29,7 @@ export interface PinStats {
 }
 
 export interface SrdStats {
-  workload: SrdInfo;
+  workload: WorkloadInfo | null;
 }
 
 export interface CleanupStats {

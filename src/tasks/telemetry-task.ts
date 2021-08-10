@@ -1,6 +1,7 @@
 import axios from 'axios';
 import _ from 'lodash';
 import { Logger } from 'winston';
+import SworkerApi from '../sworker';
 import { AppContext } from '../types/context';
 import { PinStatus } from '../types/database';
 import { NormalizedConfig } from '../types/smanager-config';
@@ -31,7 +32,7 @@ async function handleReport(
     logger.warn('telemetry endpoint not configured, skip report');
     return;
   }
-  const stats = await collectStats(context);
+  const stats = await collectStats(context, logger);
   logger.info('reporting stats to telemtry: %o', stats);
   const resp = await axios.post(telemetryUrl, stats, {
     timeout: 10 * 1000,
@@ -39,7 +40,10 @@ async function handleReport(
   logger.info('telemetry response: %s', JSON.stringify(resp.data));
 }
 
-async function collectStats(context: AppContext): Promise<TelemetryData> {
+async function collectStats(
+  context: AppContext,
+  logger: Logger,
+): Promise<TelemetryData> {
   const { api, config, database, sworkerApi } = context;
   const account = api.getChainAccount();
   const smangerInfo = collectSManagerInfo(config, context);
@@ -53,7 +57,7 @@ async function collectStats(context: AppContext): Promise<TelemetryData> {
       where status = "done" and last_updated > ? `,
     [timeStart],
   );
-  const workload: WorkloadInfo = await sworkerApi.workload();
+  const workload = await getSworkerWorkload(sworkerApi, logger);
   // {
   //   srd: {
   //     srd_complete: 0,
@@ -66,14 +70,29 @@ async function collectStats(context: AppContext): Promise<TelemetryData> {
     chainAccount: account,
     smangerInfo,
     pinStats,
-    srd: {
-      workload: workload.srd,
+    sworker: {
+      workload: workload,
     },
     queueStats,
     cleanupStats: {
       deletedCount,
     },
   };
+}
+
+async function getSworkerWorkload(
+  sworkerApi: SworkerApi,
+  logger: Logger,
+): Promise<WorkloadInfo | null> {
+  try {
+    return await sworkerApi.workload();
+  } catch (e) {
+    logger.error(
+      'failed to load sworker workload: %s',
+      (e as Error).stack || JSON.stringify(e),
+    );
+    return null;
+  }
 }
 
 async function collectQueueInfo(database): Promise<QueueInfo> {
@@ -137,7 +156,7 @@ export async function createTelemetryReportTask(
     hours: 1,
   }).asMilliseconds();
   return makeIntervalTask(
-    30 * 1000,
+    300 * 1000,
     reportInterval,
     'telemetry-report',
     context,

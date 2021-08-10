@@ -36,7 +36,7 @@ async function main() {
   const api = await timeoutOrError(
     'connect to chain',
     startChain(config),
-    10 * 1000,
+    30 * 1000,
   );
 
   const database = await loadDb(config);
