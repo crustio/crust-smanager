@@ -55,10 +55,10 @@ async function main() {
   const simpleTasks = await loadSimpleTasks(context);
   const tasks = await loadTasks(context);
   try {
-    // start tasks first
+    await waitChainSynced(context);
+    // start tasks
     _.forEach(simpleTasks, (t) => t.start(context));
     _.forEach(tasks, (t) => t.start(context));
-    await waitChainSynced(context);
     // start event loop after chain is synced
     await doEventLoop(context, tasks);
   } catch (e) {
