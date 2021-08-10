@@ -22,7 +22,7 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     indexer: string,
   ): Promise<FileRecord[]> => {
     const records = await db.all(
-      'select id, cid, expire_at, size, amount, replicas, indexer, status, last_updated, create_at from file_record where cid in (?) and indexer = ? limit 1',
+      'select id, cid, expire_at, size, amount, replicas, indexer, status, last_updated, create_at from file_record where cid in (?) and indexer = ?',
       [cids, indexer],
     );
     return records;
