@@ -7,12 +7,30 @@ export type SealInfoMap = { [cid: string]: SealInfo };
 
 export interface SrdInfo {
   srd_complete: number;
+  srd_remaining_task: number;
+  disk_available_for_srd: number;
   disk_available: number;
+  disk_volume: number;
   sys_disk_available: number;
+  srd_detail: any;
 }
 
 export interface WorkloadInfo {
   srd: SrdInfo;
+  files: {
+    lost: {
+      num: number;
+      size: number;
+    },
+    pending: {
+      num: number;
+      size: number;
+    },
+    valid: {
+      num: number;
+      size: number;
+    }
+  };
 }
 
 export type SealedType = 'valid' | 'lost' | 'pending';

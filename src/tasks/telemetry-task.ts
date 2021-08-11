@@ -12,6 +12,7 @@ import {
   QueueInfo,
   SManagerInfo,
   TelemetryData,
+  SWorkerStats,
 } from '../types/telemetry';
 import { getTimestamp, toQuotedList } from '../utils';
 import { Dayjs } from '../utils/datetime';
@@ -58,21 +59,29 @@ async function collectStats(
     [timeStart],
   );
   const workload = await getSworkerWorkload(sworkerApi, logger);
-  // {
-  //   srd: {
-  //     srd_complete: 0,
-  //     disk_available: 0,
-  //     sys_disk_available: 0,
-  //   },
-  // };
+  let reportWL: SWorkerStats
+  if (workload) {
+    reportWL = {
+      srd: {
+        srd_complete: workload.srd.srd_complete,
+        srd_remaining_task: workload.srd.srd_remaining_task,
+        disk_available_for_srd: workload.srd.disk_available_for_srd,
+        disk_available: workload.srd.disk_available,
+        disk_volume: workload.srd.disk_volume,
+        sys_disk_available: workload.srd.sys_disk_available,
+        srd_volumn_count: Object.keys(workload.srd.srd_detail).length
+      },
+      files: workload.files
+    }
+  } else {
+    reportWL = null
+  }
 
   return {
     chainAccount: account,
     smangerInfo,
     pinStats,
-    sworker: {
-      workload: workload,
-    },
+    sworker: reportWL,
     queueStats,
     cleanupStats: {
       deletedCount,

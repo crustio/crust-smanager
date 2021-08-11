@@ -5,9 +5,35 @@ export interface TelemetryData {
   chainAccount: string;
   smangerInfo: SMangerInfo;
   pinStats: PinStats;
-  sworker: SrdStats;
+  sworker: SWorkerStats | null;
   queueStats: QueueInfo;
   cleanupStats: CleanupStats;
+}
+
+export interface SWorkerStats {
+  files: {
+    lost: {
+      num: number;
+      size: number;
+    },
+    pending: {
+      num: number;
+      size: number;
+    },
+    valid: {
+      num: number;
+      size: number;
+    }
+  };
+  srd: {
+    srd_complete: number;
+    srd_remaining_task: number;
+    disk_available_for_srd: number;
+    disk_available: number;
+    disk_volume: number;
+    sys_disk_available: number;
+    srd_volumn_count: number;
+  }
 }
 
 export interface SManagerInfo {
@@ -26,10 +52,6 @@ export interface PinStats {
   failedCount: number;
   sealedCount: number;
   sealedSize: number; // in MB
-}
-
-export interface SrdStats {
-  workload: WorkloadInfo | null;
 }
 
 export interface CleanupStats {
