@@ -109,7 +109,8 @@ async function startChain(config: NormalizedConfig) {
 }
 
 async function waitChainSynced(context: AppContext): Promise<void> {
-  const maxWait = 1000;
+  // 1 day
+  const maxWait = 28800;
   let tick = 0;
   let successCount = 0;
   logger.info('waiting for chain synced');
