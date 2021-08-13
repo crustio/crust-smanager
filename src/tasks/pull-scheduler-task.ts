@@ -248,8 +248,13 @@ async function sealFile(
   await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
   const { ipfsApi } = context;
   // timeout is necessay
-  ipfsApi
-    .pin(record.cid, estimateIpfsPinTimeout(record.size))
+  const [abortCtrl, result] = ipfsApi.pin(
+    record.cid,
+    estimateIpfsPinTimeout(record.size),
+  );
+  context.cancelationTokens[record.cid] = abortCtrl;
+
+  result
     .then((r) => {
       if (r) {
         logger.info('file "%s" sealed successfuly', record.cid);

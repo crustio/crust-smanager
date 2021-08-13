@@ -1,7 +1,6 @@
 import { BigNumber } from 'bignumber.js';
 import { addrToHostPort } from '../utils';
 import IpfsHttpClient from 'ipfs-http-client';
-import { Function0 } from 'lodash';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 

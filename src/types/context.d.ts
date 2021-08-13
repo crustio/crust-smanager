@@ -18,4 +18,5 @@ export interface AppContext {
   ipfsApi: IpfsApi;
   sworkerApi: SworkerApi;
   groupInfo: GroupInfo | null;
+  cancelationTokens: { [cid: string]: AbortController };
 }

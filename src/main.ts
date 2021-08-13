@@ -46,6 +46,7 @@ async function main() {
 
   const context: AppContext = {
     api,
+    cancelationTokens: {},
     config,
     database,
     groupInfo: null,
