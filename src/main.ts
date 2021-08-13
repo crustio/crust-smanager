@@ -19,6 +19,9 @@ const MaxTickTimout = 15 * 1000;
 const IpfsTimeout = 8000 * 1000; // 8000s
 const SworkerTimeout = 8000 * 1000; //8000s
 const ConfigFile = process.env['SMANAGER_CONFIG'] || 'smanager-config.json';
+const MaxNoNewBlockDuration = Dayjs.duration({
+  minutes: 30,
+});
 
 /**
  * SManager tasks:
@@ -131,13 +134,24 @@ async function waitChainSynced(context: AppContext): Promise<void> {
 async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
   const { api } = context;
   let lastBlock = api.latestFinalizedBlock();
+  let lastBlockTime = Dayjs();
   logger.info('running event loop');
   do {
     const curBlock = api.latestFinalizedBlock();
     if (lastBlock >= curBlock) {
+      const now = Dayjs();
+      const diff = Dayjs.duration(now.diff(lastBlockTime));
+      if (diff.asSeconds() > MaxNoNewBlockDuration.asSeconds()) {
+        logger.error(
+          'no new block for %d seconds, quiting smanager!',
+          diff.asSeconds(),
+        );
+        throw new Error('block not updating');
+      }
       await Bluebird.delay(3 * 1000);
       continue;
     }
+    lastBlockTime = Dayjs();
     for (let block = lastBlock + 1; block <= curBlock; block++) {
       logger.info('run tasks on block %d', block);
       lastBlock = block;
