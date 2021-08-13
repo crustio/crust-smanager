@@ -1,6 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 import { addrToHostPort } from '../utils';
 import IpfsHttpClient from 'ipfs-http-client';
+import { Function0 } from 'lodash';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 
@@ -24,10 +25,17 @@ export default class IpfsApi {
    * @param to timeout for pin operation
    * @throws illegal cid | timeout | IPFS access error, handled outside(use it as async way)
    */
-  async pin(c: string, to: number): Promise<boolean> {
-    const cid = new CID(c);
-    const pin = await this.ipfs.pin.add(new CID(cid), { timeout: to });
-    return cid.equals(pin);
+  pin(c: string, to: number): [AbortController, Promise<boolean>] {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const result = async () => {
+      const cid = new CID(c);
+      const pin = this.ipfs.pin.add(new CID(cid), { timeout: to, signal });
+      return cid.equals(pin) as boolean;
+    };
+
+    return [controller, result()];
   }
 
   /**
