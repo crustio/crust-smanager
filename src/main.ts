@@ -52,6 +52,7 @@ async function main() {
     cancelationTokens: {},
     config,
     database,
+    nodeInfo: null,
     groupInfo: null,
     ipfsApi,
     sworkerApi,

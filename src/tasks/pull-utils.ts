@@ -11,7 +11,7 @@ import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { GroupInfo } from '../types/context';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
-export const SysMinFreeSpace = 10 * 1024; // 10 * 1024 MB
+export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
 export const RetryableStatus: FileStatus[] = [

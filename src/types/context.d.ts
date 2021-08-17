@@ -5,7 +5,11 @@ import IpfsApi from '../ipfs';
 import SworkerApi from '../sworker';
 import { NormalizedConfig } from './smanager-config';
 
+export interface NodeInfo {
+  nodeCount: number;
+}
 export interface GroupInfo {
+  groupAccount: string;
   totalMembers: number;
   nodeIndex: number;
 }
@@ -17,6 +21,7 @@ export interface AppContext {
   database: Database;
   ipfsApi: IpfsApi;
   sworkerApi: SworkerApi;
+  nodeInfo: NodeInfo | null;
   groupInfo: GroupInfo | null;
   cancelationTokens: { [cid: string]: AbortController };
 }

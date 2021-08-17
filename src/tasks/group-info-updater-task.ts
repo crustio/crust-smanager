@@ -31,6 +31,7 @@ async function handleUpdate(
     members.sort();
     const nodeIndex = members.indexOf(api.getChainAccount());
     context.groupInfo = {
+      groupAccount: groupOwner,
       totalMembers: members.length,
       nodeIndex,
     };

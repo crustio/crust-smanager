@@ -1,3 +1,4 @@
+import { GroupInfo } from './context';
 import { NormalizedSchedulerConfig } from './smanager-config';
 import { SrdInfo, WorkloadInfo } from './sworker';
 
@@ -8,6 +9,7 @@ export interface TelemetryData {
   sworker: SWorkerStats | null;
   queueStats: QueueInfo;
   cleanupStats: CleanupStats;
+  groupInfo: GroupInfo;
 }
 
 export interface SWorkerStats {
@@ -15,15 +17,15 @@ export interface SWorkerStats {
     lost: {
       num: number;
       size: number;
-    },
+    };
     pending: {
       num: number;
       size: number;
-    },
+    };
     valid: {
       num: number;
       size: number;
-    }
+    };
   };
   srd: {
     srd_complete: number;
@@ -33,7 +35,7 @@ export interface SWorkerStats {
     disk_volume: number;
     sys_disk_available: number;
     srd_volumn_count: number;
-  }
+  };
 }
 
 export interface SManagerInfo {

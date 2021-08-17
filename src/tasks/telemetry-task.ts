@@ -63,7 +63,7 @@ async function collectStats(
     [timeStart],
   );
   const workload = await getSworkerWorkload(sworkerApi, logger);
-  let reportWL: SWorkerStats
+  let reportWL: SWorkerStats;
   if (workload) {
     reportWL = {
       srd: {
@@ -73,12 +73,12 @@ async function collectStats(
         disk_available: workload.srd.disk_available,
         disk_volume: workload.srd.disk_volume,
         sys_disk_available: workload.srd.sys_disk_available,
-        srd_volumn_count: Object.keys(workload.srd.srd_detail).length
+        srd_volumn_count: Object.keys(workload.srd.srd_detail).length,
       },
-      files: workload.files
-    }
+      files: workload.files,
+    };
   } else {
-    reportWL = null
+    reportWL = null;
   }
 
   return {
@@ -86,6 +86,11 @@ async function collectStats(
     smangerInfo,
     pinStats,
     sworker: reportWL,
+    groupInfo: context.groupInfo || {
+      groupAccount: '',
+      totalMembers: 0,
+      nodeIndex: 0,
+    },
     queueStats,
     cleanupStats: {
       deletedCount,

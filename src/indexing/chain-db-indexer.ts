@@ -95,6 +95,7 @@ async function dbIndexer(
         // full db scan completed recently, not to need to run the indexer too often
         logger.info('in cool down period, wait for a short while to recheck');
         await Bluebird.delay(5 * 60 * 1000);
+        continue;
       }
       const keys = await (_.isEmpty(lastIndexedKey)
         ? api.chainApi().rpc.state.getKeysPaged(MarketFilesKey, 10) // TODO: batch size should be configurable
