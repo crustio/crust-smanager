@@ -1,14 +1,13 @@
 import BigNumber from 'bignumber.js';
 import { FileRecord, FileStatus } from '../types/database';
-import {
-  NormalizedSchedulerConfig,
-  PullingStrategy,
-} from '../types/smanager-config';
+import { PullingStrategy } from '../types/smanager-config';
 import IpfsHttpClient from 'ipfs-http-client';
 import { bytesToMb } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
-import { GroupInfo } from '../types/context';
+import { AppContext } from '../types/context';
+import seedrandom from 'seedrandom';
+import _ from 'lodash';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
@@ -25,6 +24,7 @@ type FilterFileResult =
   | 'invalidCID'
   | 'invalidNoReplica'
   | 'nodeSkipped'
+  | 'pfSkipped'
   | 'lifeTimeTooShort'
   | 'expired'
   | 'sizeTooSmall'
@@ -46,9 +46,10 @@ export function filterFile(
   record: FileRecord,
   strategey: PullingStrategy,
   lastBlockTime: BlockAndTime,
-  groupInfo: GroupInfo,
-  config: NormalizedSchedulerConfig,
+  context: AppContext,
 ): FilterFileResult {
+  const config = context.config.scheduler;
+  const groupInfo = context.groupInfo;
   try {
     const bn = cidToBigNumber(record.cid);
     if (
@@ -59,6 +60,9 @@ export function filterFile(
     }
   } catch (ex) {
     return 'invalidCID';
+  }
+  if (strategey === 'newFilesWeight' && !probabilityFilter(context)) {
+    return 'pfSkipped';
   }
   const fileSizeInMb = bytesToMb(record.size);
   // check min file size limit
@@ -128,4 +132,30 @@ export function isDiskEnoughForFile(
  */
 export function estimateIpfsPinTimeout(size: number /** in bytes */): number {
   return BasePinTimeout + (size / 1024 / 200) * 1000;
+}
+
+function probabilityFilter(context: AppContext): boolean {
+  if (!context.nodeInfo) {
+    return false;
+  }
+  // Base probability
+  let pTake = 0.0;
+  const nodeCount = context.nodeInfo.nodeCount;
+  if (nodeCount === 0) {
+    pTake = 0.0;
+  } else if (nodeCount <= 2000) {
+    pTake = 100.0 / nodeCount;
+  } else {
+    pTake = 150 / nodeCount;
+  }
+
+  const memberCount = _.max([1, context.groupInfo.totalMembers]);
+  pTake = pTake * memberCount;
+
+  return pTake > rdm(context.config.chain.account);
+}
+
+function rdm(seed: string): number {
+  const rng = seedrandom(seed, { entropy: true });
+  return rng();
 }

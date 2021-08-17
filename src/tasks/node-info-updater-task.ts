@@ -84,7 +84,7 @@ export async function createNodeInfoUpdateTask(
   // update node count every 5 hours
   // note: it's slow
   const updateInterval = Dayjs.duration({
-    hours: 5,
+    hours: 1,
   }).asMilliseconds();
 
   return makeIntervalTask(

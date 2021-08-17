@@ -96,6 +96,10 @@ async function isReady(context: AppContext, logger: Logger): Promise<boolean> {
     logger.info('group info not loaded, skip this round');
     return false;
   }
+  if (!context.nodeInfo) {
+    logger.info('node info not loaded, skip this round');
+    return false;
+  }
   if (config.scheduler.minSrdRatio > 0) {
     const workload = await sworkerApi.workload();
     const total = workload.srd.srd_complete + workload.srd.disk_available;
@@ -160,13 +164,7 @@ async function getOneFileByStrategy(
       logger.info('no pending files for strategy: %s', strategy);
       return null;
     }
-    const status = filterFile(
-      record,
-      strategy,
-      blockAndTime,
-      context.groupInfo,
-      context.config.scheduler,
-    );
+    const status = filterFile(record, strategy, blockAndTime, context);
     switch (status) {
       case 'good':
         return record;
@@ -181,8 +179,9 @@ async function getOneFileByStrategy(
         logger.info('file "%s" is skipped by lifetime constraint', record.cid);
         await fileOrderOps.updateFileInfoStatus(record.id, 'expired');
         break;
+      case 'pfSkipped':
       case 'nodeSkipped':
-        logger.info('file "%s" is skipped by node id rule', record.cid);
+        logger.info('file "%s" is skipped by rule: "%s"', record.cid, status);
         await fileOrderOps.updateFileInfoStatus(record.id, 'skipped');
         break;
       case 'sizeTooSmall':
