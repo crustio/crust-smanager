@@ -265,8 +265,9 @@ async function sealFile(
       const errStr = `${e}`;
       if (errStr.includes('TimeoutError')) {
         // fine
+        logger.warn('ipfs pin timeout: %s', formatError(e));
       } else {
-        logger.error(
+        logger.warn(
           'got unexpected error while calling ipfs apis: %s',
           formatError(e),
         );

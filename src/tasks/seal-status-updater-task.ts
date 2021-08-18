@@ -71,7 +71,7 @@ async function checkAndUpdateStatus(
         'sealing is too slow for file "%s", cancel sealing',
         record.cid,
       );
-      await makeRecordAsFailed(record, pinRecordOps, context, logger);
+      await markRecordAsFailed(record, pinRecordOps, context, logger, true);
     } else {
       await pinRecordOps.updatePinRecordSealStatus(
         record.id,
@@ -84,7 +84,7 @@ async function checkAndUpdateStatus(
     const done = await isSealDone(record.cid, sworkerApi, logger);
     if (!done) {
       logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
-      await makeRecordAsFailed(record, pinRecordOps, context, logger);
+      await markRecordAsFailed(record, pinRecordOps, context, logger, false);
     } else {
       logger.info('file "%s" is sealed, update the seal status', record.cid);
       await pinRecordOps.updatePinRecordStatus(record.id, 'sealed');
@@ -92,11 +92,12 @@ async function checkAndUpdateStatus(
   }
 }
 
-async function makeRecordAsFailed(
+async function markRecordAsFailed(
   record: PinRecord,
   pinRecordOps: PinRecordOperator,
   context: AppContext,
   logger: Logger,
+  endSworker: boolean,
 ) {
   const { sworkerApi } = context;
   if (_.has(context.cancelationTokens, record.cid)) {
@@ -105,7 +106,9 @@ async function makeRecordAsFailed(
     delete context.cancelationTokens[record.cid];
   }
   await pinRecordOps.updatePinRecordStatus(record.id, 'failed');
-  await sworkerApi.sealEnd(record.cid);
+  if (endSworker) {
+    await sworkerApi.sealEnd(record.cid);
+  }
 }
 
 async function isSealDone(
