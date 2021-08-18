@@ -7,6 +7,7 @@ import { PinRecord, PinRecordOperator } from '../types/database';
 import { SealInfoMap } from '../types/sworker';
 import { SimpleTask } from '../types/tasks';
 import { getTimestamp } from '../utils';
+import { isSealDone } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
 const MinSworkerSealSpeed = 10 * 1024; // 10 KB/s
@@ -108,21 +109,6 @@ async function markRecordAsFailed(
   await pinRecordOps.updatePinRecordStatus(record.id, 'failed');
   if (endSworker) {
     await sworkerApi.sealEnd(record.cid);
-  }
-}
-
-async function isSealDone(
-  cid: string,
-  sworkerApi: SworkerApi,
-  logger: Logger,
-): Promise<boolean> {
-  try {
-    // ipfs pin returns quickly if the sealing is done, otherwise it will timeout
-    const ret = await sworkerApi.getSealInfo(cid);
-    return ret && (ret.type === 'valid' || ret.type === 'lost');
-  } catch (ex) {
-    logger.error('unexpected error while calling sworker api');
-    throw ex;
   }
 }
 

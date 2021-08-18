@@ -8,6 +8,8 @@ import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { AppContext } from '../types/context';
 import seedrandom from 'seedrandom';
 import _ from 'lodash';
+import SworkerApi from '../sworker';
+import { Logger } from 'winston';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
@@ -158,4 +160,19 @@ function probabilityFilter(context: AppContext): boolean {
 function rdm(seed: string): number {
   const rng = seedrandom(seed, { entropy: true });
   return rng();
+}
+
+export async function isSealDone(
+  cid: string,
+  sworkerApi: SworkerApi,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    // ipfs pin returns quickly if the sealing is done, otherwise it will timeout
+    const ret = await sworkerApi.getSealInfo(cid);
+    return ret && (ret.type === 'valid' || ret.type === 'lost');
+  } catch (ex) {
+    logger.error('unexpected error while calling sworker api');
+    throw ex;
+  }
 }

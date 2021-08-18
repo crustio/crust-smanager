@@ -20,6 +20,7 @@ import {
   estimateIpfsPinTimeout,
   filterFile,
   isDiskEnoughForFile,
+  isSealDone,
 } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
@@ -163,6 +164,10 @@ async function getOneFileByStrategy(
     if (!record) {
       logger.info('no pending files for strategy: %s', strategy);
       return null;
+    }
+    if (await isSealDone(record.cid, context.sworkerApi, logger)) {
+      await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
+      continue;
     }
     const status = filterFile(record, strategy, blockAndTime, context);
     switch (status) {
