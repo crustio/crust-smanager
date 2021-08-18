@@ -100,3 +100,8 @@ export function gbToMb(gb: number): number {
 export function toQuotedList<T>(status: T[]): string {
   return status.map((s) => `"${s}"`).join(',');
 }
+
+// eslint-disable-next-line
+export function formatError(e: any): string {
+  return (e as Error).stack || JSON.stringify(e);
+}

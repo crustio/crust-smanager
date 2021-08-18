@@ -14,7 +14,7 @@ import { createFileOrderOperator } from '../db/file-record';
 import { ChainFileInfo } from '../types/chain';
 import { AppContext } from '../types/context';
 import { Task } from '../types/tasks';
-import { bytesToMb } from '../utils';
+import { bytesToMb, formatError } from '../utils';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { Dayjs } from '../utils/datetime';
 import { getLatestBlockTime } from './chain-time-indexer';
@@ -133,10 +133,7 @@ async function dbIndexer(
       lastIndexedKey = _.last(cids).key;
       await config.saveString(KeyLastIndexedKey, lastIndexedKey);
     } catch (e) {
-      logger.error(
-        'caught exception: %s',
-        (e as Error).stack || JSON.stringify(e),
-      );
+      logger.error('caught exception: %s', formatError(e));
     }
   }
   logger.info('db indexer thread stopped');

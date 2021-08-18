@@ -14,7 +14,7 @@ import {
   TelemetryData,
   SWorkerStats,
 } from '../types/telemetry';
-import { getTimestamp, toQuotedList } from '../utils';
+import { formatError, getTimestamp, toQuotedList } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { PendingStatus } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
@@ -105,10 +105,7 @@ async function getSworkerWorkload(
   try {
     return await sworkerApi.workload();
   } catch (e) {
-    logger.error(
-      'failed to load sworker workload: %s',
-      (e as Error).stack || JSON.stringify(e),
-    );
+    logger.error('failed to load sworker workload: %s', formatError(e));
     return null;
   }
 }

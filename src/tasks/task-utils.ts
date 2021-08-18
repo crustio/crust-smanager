@@ -2,6 +2,7 @@ import { Function0, Function3 } from 'lodash';
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
+import { formatError } from '../utils';
 import { createChildLoggerWith } from '../utils/logger';
 
 export type IsStopped = Function0<boolean>;
@@ -32,7 +33,7 @@ export async function makeIntervalTask(
       logger.error(
         'unexpected execption running task "%s", %s',
         name,
-        (e as Error).stack || JSON.stringify(e),
+        formatError(e),
       );
     } finally {
       logger.info('task done: "%s"', name);

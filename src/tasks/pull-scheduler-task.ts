@@ -13,7 +13,7 @@ import {
 } from '../types/database';
 import { PullingStrategy } from '../types/smanager-config';
 import { SimpleTask } from '../types/tasks';
-import { gbToMb } from '../utils';
+import { formatError, gbToMb } from '../utils';
 import { BlockAndTime } from '../utils/chain-math';
 import { makeRandomSelection } from '../utils/weighted-selection';
 import {
@@ -266,7 +266,10 @@ async function sealFile(
       if (errStr.includes('TimeoutError')) {
         // fine
       } else {
-        logger.error('got unexpected error while calling ipfs apis');
+        logger.error(
+          'got unexpected error while calling ipfs apis: %s',
+          formatError(e),
+        );
       }
     });
 }

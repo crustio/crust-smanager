@@ -1,6 +1,7 @@
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
+import { formatError } from '../utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
 async function handleUpdate(
@@ -36,10 +37,7 @@ async function handleUpdate(
       nodeIndex,
     };
   } catch (e) {
-    logger.error(
-      'failed updating group info: %s',
-      (e as Error).stack || JSON.stringify(e),
-    );
+    logger.error('failed updating group info: %s', formatError(e));
     context.groupInfo = null;
   }
 }

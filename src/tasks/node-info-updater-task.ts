@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
+import { formatError } from '../utils';
 import { SLOT_LENGTH } from '../utils/consts';
 import { Dayjs } from '../utils/datetime';
 import { IsStopped, makeIntervalTask } from './task-utils';
@@ -63,10 +64,7 @@ async function handleUpdate(
       nodeCount: totalCount,
     };
   } catch (e) {
-    logger.error(
-      'failed updating node info: %s',
-      (e as Error).stack || JSON.stringify(e),
-    );
+    logger.error('failed updating node info: %s', formatError(e));
   }
 }
 
