@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import { Logger } from 'winston';
 import { createPinRecordOperator } from '../db/pin-record';
-import SworkerApi from '../sworker';
 import { AppContext } from '../types/context';
 import { PinRecord, PinRecordOperator } from '../types/database';
 import { SealInfoMap } from '../types/sworker';

@@ -36,3 +36,5 @@ export const IPFSGCTimeout = 6 * 60 * 60 * 1000; // 6 hours
 
 // Repo gc loop interval
 export const IPFSGCInterval = 60 * 60 * 1000; // 1 hour
+
+export const LargeFileSize = 5 * 1024; // 5GB+ files are large files

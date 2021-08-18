@@ -64,7 +64,10 @@ export interface DbOrderOperator {
     id: number,
     status: CleanupStatus,
   ) => Promise<void>;
-  getPendingFileRecord: (indexer: Indexer | null) => DbResult<FileRecord>;
+  getPendingFileRecord: (
+    indexer: Indexer | null,
+    smallFile: boolean,
+  ) => DbResult<FileRecord>;
 }
 
 type DbResult<T> = Promise<T | null>;

@@ -15,6 +15,7 @@ import { PullingStrategy } from '../types/smanager-config';
 import { SimpleTask } from '../types/tasks';
 import { formatError, gbToMb } from '../utils';
 import { BlockAndTime } from '../utils/chain-math';
+import { LargeFileSize } from '../utils/consts';
 import { makeRandomSelection } from '../utils/weighted-selection';
 import {
   estimateIpfsPinTimeout,
@@ -34,7 +35,7 @@ async function handlePulling(
 ): Promise<void> {
   const pickStrategy = makeStrategySelection(context);
   const pinRecordOps = createPinRecordOperator(context.database);
-  const { config, database } = context;
+  const { database } = context;
   if (!(await isReady(context, logger))) {
     logger.info('skip pulling as node not ready');
     return;
@@ -52,7 +53,8 @@ async function handlePulling(
       break;
     }
     const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
-    if (sealingCount >= config.scheduler.maxPendingTasks) {
+    const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
+    if (sealingCount >= maxForSmall + maxForLarge) {
       logger.info('current sealing %d files, skip this round', sealingCount);
       break;
     }
@@ -62,6 +64,14 @@ async function handlePulling(
       totalSize,
     );
 
+    const sealingFiles = await pinRecordOps.getSealingRecords();
+    const [smallFiles, largeFiles] = _.partition(
+      sealingFiles,
+      (f) => f.size < LargeFileSize,
+    );
+    const sealSmall = _.size(smallFiles) < maxForSmall;
+    const sealLarge = _.size(largeFiles) < maxForLarge;
+
     const strategy = pickStrategy();
     logger.info('pull file using strategy: %s', strategy);
     const record = await getOneFileByStrategy(
@@ -69,7 +79,7 @@ async function handlePulling(
       logger,
       fileOrderOps,
       lastBlockTime,
-      strategy,
+      { strategy, sealSmall, sealLarge },
     );
     if (!record) {
       logger.info('no pending file records for strategy: %s', strategy);
@@ -139,6 +149,16 @@ async function isSWorkerReady(
   return true;
 }
 
+// returns: [maxTasksForSmallFile, maxTasksForLargeFile]
+function getMaxSealTasks(context: AppContext): [number, number] {
+  const maxPendingFiles = context.config.scheduler.maxPendingTasks;
+  // large files: 40%, small files 60%
+  // and minimum: 1
+  const maxForLarge = _.max([1, _.floor(maxPendingFiles * 0.4)]);
+  const maxForSmall = _.max([1, maxPendingFiles - maxForLarge]);
+  return [maxForSmall, maxForLarge];
+}
+
 function makeStrategySelection(
   context: AppContext,
 ): Function0<PullingStrategy> {
@@ -152,17 +172,28 @@ function makeStrategySelection(
   return makeRandomSelection(weights);
 }
 
+interface SealOption {
+  strategy: PullingStrategy;
+  sealSmall: boolean;
+  sealLarge: boolean;
+}
+
 async function getOneFileByStrategy(
   context: AppContext,
   logger: Logger,
   fileOrderOps: DbOrderOperator,
   blockAndTime: BlockAndTime,
-  strategy: PullingStrategy,
+  options: SealOption,
 ): Promise<FileRecord | null> {
+  const { strategy } = options;
   do {
-    const record = await getPendingFileByStrategy(fileOrderOps, strategy);
+    const record = await getPendingFile(fileOrderOps, options, logger);
     if (!record) {
-      logger.info('no pending files for strategy: %s', strategy);
+      logger.info(
+        'no pending files for strategy: %s, options: %o',
+        strategy,
+        options,
+      );
       return null;
     }
     if (await isSealDone(record.cid, context.sworkerApi, logger)) {
@@ -227,15 +258,45 @@ async function getFreeSpace(context: AppContext): Promise<[number, number]> {
   return [gbToMb(freeGBSize), gbToMb(sysFreeGBSize)];
 }
 
+async function getPendingFile(
+  fileOrderOps: DbOrderOperator,
+  sealOptions: SealOption,
+  logger: Logger,
+): DbResult<FileRecord> {
+  const { strategy, sealLarge, sealSmall } = sealOptions;
+  if (sealLarge) {
+    const record = await getPendingFileByStrategy(
+      fileOrderOps,
+      strategy,
+      false,
+    );
+    if (record) {
+      return record;
+    }
+
+    logger.info(
+      'no pending large files for strategey: %s, checking small files',
+      strategy,
+    );
+    return await getPendingFileByStrategy(fileOrderOps, strategy, true);
+  }
+
+  if (sealSmall) {
+    return getPendingFileByStrategy(fileOrderOps, strategy, true);
+  }
+  return null;
+}
+
 async function getPendingFileByStrategy(
   fileOrderOps: DbOrderOperator,
   strategy: PullingStrategy,
+  smallFile: boolean,
 ): DbResult<FileRecord> {
   switch (strategy) {
     case 'newFilesWeight':
-      return fileOrderOps.getPendingFileRecord('chainEvent');
+      return fileOrderOps.getPendingFileRecord('chainEvent', smallFile);
     case 'existedFilesWeight':
-      return fileOrderOps.getPendingFileRecord('dbScan');
+      return fileOrderOps.getPendingFileRecord('dbScan', smallFile);
   }
 }
 

@@ -14,6 +14,7 @@ import {
 } from '../types/database';
 import { Indexer } from '../types/indexing';
 import { getTimestamp } from '../utils';
+import { LargeFileSize } from '../utils/consts';
 import { logger } from '../utils/logger';
 
 export function createFileOrderOperator(db: Database): DbOrderOperator {
@@ -164,18 +165,22 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
 
   const getPendingFileRecord = async (
     indexer: Indexer | null,
+    smallFile: boolean,
   ): DbResult<FileRecord> => {
+    const sizeCond = smallFile
+      ? ` size < ${LargeFileSize} `
+      : ` size >= ${LargeFileSize}`;
     if (indexer === null) {
       return db.get(
         `select id, cid, expire_at, size, amount, replicas,
          indexer, status, last_updated, create_at
-         from file_record where status = "new" order by id asc limit 1`,
+         from file_record where status = "new" and ${sizeCond} order by amount desc, id asc limit 1`,
       );
     }
     return db.get(
       `select id, cid, expire_at, size, amount, replicas,
       indexer, status, last_updated, create_at
-      from file_record  where indexer = ?  and status = "new" order by id asc limit 1`,
+      from file_record  where indexer = ?  and status = "new" and ${sizeCond} order by amount desc, id asc limit 1`,
       [indexer],
     );
   };
