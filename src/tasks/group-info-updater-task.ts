@@ -16,10 +16,12 @@ async function handleUpdate(context: AppContext, logger: Logger) {
     const groupOwner = sworkIdentity.group;
     if (!groupOwner) {
       logger.warn('⚠️ Wait for the node to join group');
+      context.groupInfo = null;
       return;
     }
     if (api.getChainAccount() === groupOwner) {
       logger.error("💥 Can't use owner account to configure isolation/member");
+      context.groupInfo = null;
       return;
     }
 
