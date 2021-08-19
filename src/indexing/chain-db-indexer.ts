@@ -165,10 +165,10 @@ async function indexOneFile(
   const life = dayjs.duration(expireTime.diff(now));
   if (life.asSeconds() < MinLifeTime.asSeconds()) {
     logger.info(
-      'skip file %s, life(%d days) is shorter than configured min life period: %d days',
+      'skip file %s, life(%s) is shorter than configured min life period: %s',
       cid,
-      life.asDays().toFixed(1),
-      MinLifeTime.asDays().toFixed(1),
+      life.humanize(),
+      MinLifeTime.humanize(),
     );
     return null;
   }
