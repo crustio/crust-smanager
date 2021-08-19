@@ -94,7 +94,7 @@ export function mbToBytes(mb: number): number {
 }
 
 export function gbToMb(gb: number): number {
-  return gb / 1024;
+  return gb * 1024;
 }
 
 export function toQuotedList<T>(status: T[]): string {
