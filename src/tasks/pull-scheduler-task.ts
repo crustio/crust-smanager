@@ -41,7 +41,7 @@ async function handlePulling(
     logger.info('skip pulling as node not ready');
     return;
   }
-  
+
   const [sworkerFree, sysFree] = await getFreeSpace(context);
   logger.info('files pulling started');
   const maxFilesPerRound = 100;
@@ -87,7 +87,7 @@ async function handlePulling(
       logger.info('no pending file records for strategy: %s', strategy);
       continue;
     }
-    
+
     if (!isDiskEnoughForFile(record.size, totalSize, sworkerFree, sysFree)) {
       logger.info('disk space is not enough for file %s', record.cid);
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
@@ -198,13 +198,13 @@ async function getOneFileByStrategy(
       );
       return null;
     }
-    if (await isSealDone(record.cid, context.sworkerApi, logger)) {
-      await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
-      continue;
-    }
     const status = filterFile(record, strategy, blockAndTime, context);
     switch (status) {
       case 'good':
+        if (await isSealDone(record.cid, context.sworkerApi, logger)) {
+          await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
+          break;
+        }
         return record;
       case 'invalidCID':
       case 'invalidNoReplica':
