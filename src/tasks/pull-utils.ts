@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import { FileRecord, FileStatus } from '../types/database';
 import { PullingStrategy } from '../types/smanager-config';
 import IpfsHttpClient from 'ipfs-http-client';
-import { bytesToMb } from '../utils';
+import { bytesToMb, formatError } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { AppContext } from '../types/context';
@@ -170,7 +170,10 @@ export async function isSealDone(
     const ret = await sworkerApi.getSealInfo(cid);
     return ret && (ret.type === 'valid' || ret.type === 'lost');
   } catch (ex) {
-    logger.error('unexpected error while calling sworker api');
+    logger.error(
+      'unexpected error while calling sworker api: %s',
+      formatError(ex),
+    );
     throw ex;
   }
 }
