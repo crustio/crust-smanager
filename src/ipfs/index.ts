@@ -1,6 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 import { addrToHostPort } from '../utils';
 import IpfsHttpClient from 'ipfs-http-client';
+import { AbortController } from 'native-abort-controller';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 
