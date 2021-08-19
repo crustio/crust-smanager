@@ -81,7 +81,7 @@ export function filterFile(
   ) {
     return 'replicasNotEnough';
   }
-  if (config.maxReplicas > 0 && record.replicas >= config.maxFileSize) {
+  if (config.maxReplicas > 0 && record.replicas >= config.maxReplicas) {
     return 'tooManyReplicas';
   }
   if (record.indexer === 'dbScan') {
