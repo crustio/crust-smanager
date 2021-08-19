@@ -1,7 +1,7 @@
 import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
-import { IsStopped, makeIntervalTask } from './task-utils';
+import { makeIntervalTask } from './task-utils';
 
 // Repo GC timeout
 export const IPFSGCTimeout = 6 * 60 * 60 * 1000; // 6 hours
@@ -9,11 +9,7 @@ export const IPFSGCTimeout = 6 * 60 * 60 * 1000; // 6 hours
 /**
  * task to triger ipfs repo gc periodly
  */
-async function handleGc(
-  context: AppContext,
-  _logger: Logger,
-  _isStopped: IsStopped,
-): Promise<void> {
+async function handleGc(context: AppContext): Promise<void> {
   await context.ipfsApi.repoGC(IPFSGCTimeout);
 }
 

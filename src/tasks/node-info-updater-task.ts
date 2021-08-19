@@ -6,17 +6,13 @@ import { SimpleTask } from '../types/tasks';
 import { formatError } from '../utils';
 import { SLOT_LENGTH } from '../utils/consts';
 import { Dayjs } from '../utils/datetime';
-import { IsStopped, makeIntervalTask } from './task-utils';
+import { makeIntervalTask } from './task-utils';
 
 // the storage key for 'swork->workReport'
 const WorkReportKey =
   '0x2e3b7ab5757e6bbf28d3df3b5e01d6b9b7e949778e4650a54fcc65ad1f1ba39f';
 
-async function handleUpdate(
-  context: AppContext,
-  logger: Logger,
-  _isStopped: IsStopped,
-) {
+async function handleUpdate(context: AppContext, logger: Logger) {
   const { api } = context;
   try {
     let lastKey = null;

@@ -2,7 +2,7 @@ import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { getTimestamp, toQuotedList } from '../utils';
-import { IsStopped, makeIntervalTask } from './task-utils';
+import { makeIntervalTask } from './task-utils';
 import { Dayjs } from '../utils/datetime';
 import { PendingStatus, RetryableStatus } from './pull-utils';
 
@@ -14,11 +14,7 @@ const MinFileRetryInterval = Dayjs.duration({
   minutes: 30,
 }).asSeconds();
 
-async function handleRetry(
-  context: AppContext,
-  _logger: Logger,
-  _isStopped: IsStopped,
-) {
+async function handleRetry(context: AppContext) {
   const { database } = context;
 
   const now = getTimestamp();

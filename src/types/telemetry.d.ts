@@ -1,6 +1,5 @@
 import { GroupInfo } from './context';
 import { NormalizedSchedulerConfig } from './smanager-config';
-import { SrdInfo, WorkloadInfo } from './sworker';
 
 export interface TelemetryData {
   chainAccount: string;

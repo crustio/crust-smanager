@@ -12,7 +12,7 @@ export interface SrdInfo {
   disk_available: number;
   disk_volume: number;
   sys_disk_available: number;
-  srd_detail: any;
+  srd_detail: any; // eslint-disable-line
 }
 
 export interface WorkloadInfo {
@@ -21,15 +21,15 @@ export interface WorkloadInfo {
     lost: {
       num: number;
       size: number;
-    },
+    };
     pending: {
       num: number;
       size: number;
-    },
+    };
     valid: {
       num: number;
       size: number;
-    }
+    };
   };
 }
 

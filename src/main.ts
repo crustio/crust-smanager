@@ -7,7 +7,7 @@ import { createIndexingTasks } from './indexing';
 import IpfsApi from './ipfs';
 import SworkerApi from './sworker';
 import { createSimpleTasks } from './tasks';
-import { createChainHeightLogger } from './tasks/chain-height-logger-tasks';
+import { createChainHeightLogger } from './tasks/chain-height-logger-task';
 import { AppContext } from './types/context';
 import { NormalizedConfig } from './types/smanager-config';
 import { SimpleTask, Task } from './types/tasks';
@@ -75,8 +75,6 @@ async function main() {
     logger.error('unexpected error caught', e);
     throw e;
   } finally {
-    await timeout(database.close(), 5 * 1000, null);
-    api.stop();
     logger.info('stopping simple tasks');
     await timeout(
       Bluebird.map(simpleTasks, (t) => t.stop()),
@@ -89,6 +87,9 @@ async function main() {
       5 * 1000,
       [],
     );
+    logger.info('closing database and api');
+    await timeout(database.close(), 5 * 1000, null);
+    api.stop();
   }
 }
 

@@ -2,13 +2,9 @@ import { Logger } from 'winston';
 import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { formatError } from '../utils';
-import { IsStopped, makeIntervalTask } from './task-utils';
+import { makeIntervalTask } from './task-utils';
 
-async function handleUpdate(
-  context: AppContext,
-  logger: Logger,
-  _isStopped: IsStopped,
-) {
+async function handleUpdate(context: AppContext, logger: Logger) {
   const { api } = context;
   try {
     const sworkIdentity = await api.sworkIdentity();

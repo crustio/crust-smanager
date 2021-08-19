@@ -17,17 +17,13 @@ import {
 import { formatError, getTimestamp, toQuotedList } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { PendingStatus } from './pull-utils';
-import { IsStopped, makeIntervalTask } from './task-utils';
+import { makeIntervalTask } from './task-utils';
 
 const ReportSlotDuration = Dayjs.duration({
   hours: 24,
 }).asSeconds();
 
-async function handleReport(
-  context: AppContext,
-  logger: Logger,
-  _isStopped: IsStopped,
-) {
+async function handleReport(context: AppContext, logger: Logger) {
   const telemetryUrl = context.config.telemetry.endPoint;
   if (_.isEmpty(telemetryUrl)) {
     logger.warn('telemetry endpoint not configured, skip report');
