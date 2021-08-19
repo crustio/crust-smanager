@@ -35,12 +35,14 @@ async function handlePulling(
 ): Promise<void> {
   const pickStrategy = makeStrategySelection(context);
   const pinRecordOps = createPinRecordOperator(context.database);
+
   const { database } = context;
   if (!(await isReady(context, logger))) {
     logger.info('skip pulling as node not ready');
     return;
   }
-
+  
+  const [sworkerFree, sysFree] = await getFreeSpace(context);
   logger.info('files pulling started');
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
@@ -85,7 +87,7 @@ async function handlePulling(
       logger.info('no pending file records for strategy: %s', strategy);
       continue;
     }
-    const [sworkerFree, sysFree] = await getFreeSpace(context);
+    
     if (!isDiskEnoughForFile(record.size, totalSize, sworkerFree, sysFree)) {
       logger.info('disk space is not enough for file %s', record.cid);
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');

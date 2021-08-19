@@ -145,8 +145,6 @@ function probabilityFilter(context: AppContext): boolean {
   const nodeCount = context.nodeInfo.nodeCount;
   if (nodeCount === 0) {
     pTake = 0.0;
-  } else if (nodeCount <= 2000) {
-    pTake = 100.0 / nodeCount;
   } else {
     pTake = 150 / nodeCount;
   }
