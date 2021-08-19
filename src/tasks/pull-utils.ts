@@ -71,7 +71,7 @@ export function filterFile(
   if (config.minFileSize > 0 && fileSizeInMb < config.minFileSize) {
     return 'sizeTooSmall';
   }
-  if (config.maxFileSize > 0 && fileSizeInMb > config.minFileSize) {
+  if (config.maxFileSize > 0 && fileSizeInMb > config.maxFileSize) {
     return 'sizeTooLarge';
   }
   if (
