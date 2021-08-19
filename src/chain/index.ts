@@ -1,18 +1,29 @@
-/* eslint-disable node/no-extraneous-import */
-import {ApiPromise, WsProvider} from '@polkadot/api';
-import {Header, Extrinsic, EventRecord} from '@polkadot/types/interfaces';
-import {logger} from '../log';
-import {hexToString, parseObj, sleep} from '../util';
-import {typesBundleForPolkadot, crustTypes} from '@crustio/type-definitions';
+import { ApiPromise, WsProvider } from '@polkadot/api';
+import {
+  BlockHash,
+  Header,
+  Extrinsic,
+  EventRecord,
+  SignedBlock,
+} from '@polkadot/types/interfaces';
+import { bytesToMb, hexToString, parseObj, sleep } from '../utils';
+import { typesBundleForPolkadot, crustTypes } from '@crustio/type-definitions';
 import _ from 'lodash';
-import {SLOT_LENGTH} from '../util/consts';
+import { SLOT_LENGTH } from '../utils/consts';
 import BN from 'bn.js';
+import { logger } from '../utils/logger';
+import { UnsubscribePromise, VoidFn } from '@polkadot/api/types';
+import Bluebird from 'bluebird';
 
 export interface FileInfo {
   cid: string;
   size: number;
   tips: number;
+  expiredAt: number | null;
+  replicas: number | null;
+  owner: string | null;
 }
+
 export type MarketFileInfo = typeof crustTypes.market.types.FileInfo;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
@@ -20,25 +31,74 @@ export default class CrustApi {
   private readonly addr: string;
   private api!: ApiPromise;
   private readonly chainAccount: string;
+  private latestBlock = 0;
+  private subLatestHead: VoidFn = null;
 
   constructor(addr: string, chainAccount: string) {
     this.addr = addr;
     this.chainAccount = chainAccount;
-    this.initApi();
   }
 
-  initApi() {
+  async initApi(): Promise<void> {
     if (this.api && this.api.disconnect) {
-      this.api
-        .disconnect()
-        .then(() => {})
-        .catch(() => {});
+      this.api.disconnect().then().catch();
+    }
+    if (this.subLatestHead) {
+      this.subLatestHead();
     }
 
     this.api = new ApiPromise({
       provider: new WsProvider(this.addr),
       typesBundle: typesBundleForPolkadot,
     });
+
+    await this.api.isReady;
+    while (!this.api.isConnected) {
+      logger.info('waiting for api to connect');
+      await Bluebird.delay(1000);
+    }
+
+    this.subLatestHead = await this.api.rpc.chain.subscribeFinalizedHeads(
+      (head: Header) => {
+        this.latestBlock = head.number.toNumber();
+      },
+    );
+  }
+
+  // stop this api instance
+  async stop(): Promise<void> {
+    if (this.subLatestHead) {
+      this.subLatestHead();
+    }
+    if (this.api) {
+      const api = this.api;
+      this.api = null;
+      if (api.disconnect) {
+        await api.disconnect();
+      }
+    }
+  }
+
+  isConnected(): boolean {
+    return this.api.isConnected;
+  }
+
+  latestFinalizedBlock(): number {
+    return this.latestBlock;
+  }
+
+  async getBlockByNumber(blockNumber: number): Promise<SignedBlock> {
+    const hash = await this.getBlockHash(blockNumber);
+    const block = await this.api.rpc.chain.getBlock(hash);
+    return block;
+  }
+
+  async getBlockHash(blockNumber: number): Promise<BlockHash> {
+    return this.api.rpc.chain.getBlockHash(blockNumber);
+  }
+
+  chainApi(): ApiPromise {
+    return this.api;
   }
 
   /// READ methods
@@ -48,7 +108,7 @@ export default class CrustApi {
    * @returns unsubscribe signal
    * @throws ApiPromise error
    */
-  async subscribeNewHeads(handler: (b: Header) => void) {
+  async subscribeNewHeads(handler: (b: Header) => void): UnsubscribePromise {
     // Waiting for API
     while (!(await this.withApiReady())) {
       logger.info('⛓ Connection broken, waiting for chain running.');
@@ -56,41 +116,19 @@ export default class CrustApi {
       this.initApi(); // Try to recreate api to connect running chain
     }
 
-    // Waiting for chain header > 10
-    while ((await this.header()).number.toNumber() <= 10) {
-      `⛓ Chain is synchronizing, current block number ${(
-        await this.header()
-      ).number.toNumber()}`;
-      await sleep(6000);
-    }
-
     // Waiting for chain synchronization
     while (await this.isSyncing()) {
       logger.info(
         `⛓ Chain is synchronizing, current block number ${(
           await this.header()
-        ).number.toNumber()}`
-      );
-      await sleep(6000);
-    }
-
-    // Wait for sworker
-    logger.info('⏳ Wait 60s for sWorker');
-    await sleep(60 * 1000);
-
-    // Double check for chain synchronization
-    while (await this.isSyncing()) {
-      logger.info(
-        `⛓ Chain is synchronizing, current block number ${(
-          await this.header()
-        ).number.toNumber()}`
+        ).number.toNumber()}`,
       );
       await sleep(6000);
     }
 
     // Subscribe finalized event
     return await this.api.rpc.chain.subscribeFinalizedHeads((head: Header) =>
-      handler(head)
+      handler(head),
     );
   }
 
@@ -98,7 +136,7 @@ export default class CrustApi {
    * Used to determine whether the chain is synchronizing
    * @returns true/false
    */
-  async isSyncing() {
+  async isSyncing(): Promise<boolean> {
     const health = await this.api.rpc.system.health();
     let res = health.isSyncing.isTrue;
 
@@ -118,7 +156,7 @@ export default class CrustApi {
    * Get best block's header
    * @returns header
    */
-  async header() {
+  async header(): Promise<Header> {
     return this.api.rpc.chain.getHeader();
   }
 
@@ -126,7 +164,7 @@ export default class CrustApi {
    * Get chain account
    * @returns string
    */
-  getChainAccount() {
+  getChainAccount(): string {
     return this.chainAccount;
   }
 
@@ -134,8 +172,12 @@ export default class CrustApi {
    * Get sworker identity
    * @returns Identity or Null
    */
-  async sworkIdentity(): Promise<Identity> {
-    return parseObj(await this.api.query.swork.identities(this.chainAccount));
+  async sworkIdentity(): Promise<Identity | null> {
+    const identity = await this.api.query.swork.identities(this.chainAccount);
+    if (identity.isEmpty) {
+      return null;
+    }
+    return identity.toJSON() as Identity;
   }
 
   /**
@@ -151,7 +193,7 @@ export default class CrustApi {
    * Get all work reports
    * @returns The array of work report
    */
-  async workReportsAll() {
+  async workReportsAll(): Promise<unknown> {
     return parseObj(await this.api.query.swork.workReports.entries());
   }
 
@@ -159,7 +201,7 @@ export default class CrustApi {
    * Get current report slot
    * @returns Current report slot
    */
-  async currentReportSlot() {
+  async currentReportSlot(): Promise<number> {
     return parseObj(await this.api.query.swork.currentReportSlot());
   }
 
@@ -172,10 +214,10 @@ export default class CrustApi {
     const workReports = await this.workReportsAll();
     let validReports = [];
     if (_.isArray(workReports)) {
-      const realReports = _.map(workReports, e => {
+      const realReports = _.map(workReports, (e) => {
         return e[1];
       });
-      validReports = _.filter(realReports, e => {
+      validReports = _.filter(realReports, (e) => {
         return e.report_slot >= currentSlot - SLOT_LENGTH;
       });
     }
@@ -187,9 +229,13 @@ export default class CrustApi {
    * @param groupOwner owner's account id
    * @returns members(or empty vec)
    */
-  async groupMembers(groupOwner: string): Promise<Array<string>> {
+  async groupMembers(groupOwner: string): Promise<string[]> {
     try {
-      return parseObj(await this.api.query.swork.groups(groupOwner)).members;
+      const data = await this.api.query.swork.groups(groupOwner);
+      if (data.isEmpty) {
+        return [];
+      }
+      return (data.toJSON() as any).members as string[]; // eslint-disable-line
     } catch (e) {
       logger.error(`💥 Get group member error: ${e}`);
       return [];
@@ -203,7 +249,7 @@ export default class CrustApi {
    * @throws ApiPromise error or type conversing error
    */
   async parseNewFilesAndClosedFilesByBlock(
-    bh: string
+    bh: string,
   ): Promise<[FileInfo[], string[]]> {
     await this.withApiReady();
     try {
@@ -214,7 +260,7 @@ export default class CrustApi {
       const closedFiles: string[] = [];
 
       for (const {
-        event: {data, method},
+        event: { data, method },
         phase,
       } of ers) {
         if (method === 'FileSuccess') {
@@ -226,12 +272,14 @@ export default class CrustApi {
           const ex = exs[exIdx];
 
           // b. Parse new file, continue with parsing error
-          newFiles.push(this.parseFileInfo(ex));
+          newFiles.push(
+            this.parseFileInfo(ex, hexToString(data[1].toString())),
+          );
         } else if (method === 'CalculateSuccess') {
           if (data.length !== 1) continue; // data should be like [MerkleRoot]
 
           const cid = hexToString(data[0].toString());
-          const isClosed = (await this.maybeGetMarketFileInfo(cid)) === null;
+          const isClosed = (await this.maybeGetFileUsedInfo(cid)) === null;
           if (isClosed) {
             closedFiles.push(cid);
           }
@@ -254,16 +302,16 @@ export default class CrustApi {
   /**
    * Get file info from chain by cid
    * @param cid Ipfs file cid
-   * @returns Option<MarketFileInfo>
+   * @returns Option<UsedInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetMarketFileInfo(cid: string): Promise<MarketFileInfo | null> {
+  async maybeGetFileUsedInfo(cid: string): Promise<MarketFileInfo | null> {
     await this.withApiReady();
 
     try {
-      // Should be like [marketFileInfo, usedInfo] or null
-      const marketFileInfo = parseObj(await this.api.query.market.files(cid));
-      return marketFileInfo ? marketFileInfo : null;
+      // Should be like [fileInfo, usedInfo] or null
+      const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
+      return fileUsedInfo ? fileUsedInfo[1] : null;
     } catch (e) {
       logger.error(`💥 Get file/used info error: ${e}`);
       return null;
@@ -281,13 +329,16 @@ export default class CrustApi {
     }
   }
 
-  private parseFileInfo(ex: Extrinsic): FileInfo {
-    const exData = parseObj(ex.method).args;
+  private parseFileInfo(ex: Extrinsic, cid: string): FileInfo {
+    const exData = ex.method.args as any; // eslint-disable-line
     return {
-      cid: hexToString(exData.cid),
-      size: exData.reported_file_size,
+      cid,
+      size: bytesToMb(exData[1].toNumber()),
       // tips < 0.000001 will be zero
       tips: new BN(Number(exData.tips).toString()).div(new BN(1e6)).toNumber(),
+      owner: ex.signer.toString(),
+      expiredAt: 0,
+      replicas: 0,
     };
   }
 }

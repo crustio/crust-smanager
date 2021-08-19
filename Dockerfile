@@ -1,13 +1,26 @@
-FROM node:current-alpine3.10
+FROM debian:10
 
-# Create crust-smanager directory
-WORKDIR /usr/src/crust-smanager
+RUN apt-get update \
+  && apt-get install -y \
+  curl \
+  ca-certificates \
+  --no-install-recommends
 
-# Move source files to docker image
-COPY . .
+SHELL ["/bin/bash", "-c"]
+ENV BASH_ENV ~/.bashrc
 
-# Install dependencies
-RUN yarn && yarn build
+ENV VOLTA_HOME /root/.volta
 
-# Run
-ENTRYPOINT yarn start $ARGS
+ENV PATH $VOLTA_HOME/bin:$PATH
+
+RUN curl https://get.volta.sh | bash
+
+RUN volta install node@14.16.1
+
+COPY ./ /opt/crust-smanager/
+WORKDIR /opt/crust-smanager
+
+RUN npm install
+RUN npm run build
+
+CMD ["npm", "start"]

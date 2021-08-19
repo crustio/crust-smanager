@@ -1,10 +1,11 @@
-import {BigNumber} from 'bignumber.js';
-import {addrToHostPort} from '../util';
-const IpfsHttpClient = require('ipfs-http-client');
-const {CID} = require('ipfs-http-client');
+import { BigNumber } from 'bignumber.js';
+import { addrToHostPort } from '../utils';
+import IpfsHttpClient from 'ipfs-http-client';
+
+const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 
 export default class IpfsApi {
-  private readonly ipfs: any;
+  private readonly ipfs: any; // eslint-disable-line
 
   constructor(ipfsAddr: string, mto: number) {
     const [host, port] = addrToHostPort(ipfsAddr);
@@ -13,7 +14,7 @@ export default class IpfsApi {
       host: host,
       port: port,
       timeout: mto,
-    });
+    } as any); // eslint-disable-line
   }
 
   /// WRITE methods
@@ -23,10 +24,17 @@ export default class IpfsApi {
    * @param to timeout for pin operation
    * @throws illegal cid | timeout | IPFS access error, handled outside(use it as async way)
    */
-  async pin(c: string, to: number): Promise<boolean> {
-    const cid = new CID(c);
-    const pin = await this.ipfs.pin.add(new CID(cid), {timeout: to});
-    return cid.equals(pin);
+  pin(c: string, to: number): [AbortController, Promise<boolean>] {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const result = async () => {
+      const cid = new CID(c);
+      const pin = this.ipfs.pin.add(new CID(cid), { timeout: to, signal });
+      return cid.equals(pin) as boolean;
+    };
+
+    return [controller, result()];
   }
 
   /**
@@ -85,7 +93,7 @@ export default class IpfsApi {
    * ipfs repo gc
    * @param to timeout for gc operation
    */
-  async repoGC(to: number) {
-    await this.ipfs.repo.gc({timeout: to});
+  async repoGC(to: number): Promise<void> {
+    await this.ipfs.repo.gc({ timeout: to });
   }
 }

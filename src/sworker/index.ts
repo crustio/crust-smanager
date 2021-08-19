@@ -1,7 +1,12 @@
-import axios, {AxiosInstance} from 'axios';
-import {logger} from '../log';
-import {parseObj} from '../util';
-import {inspect} from 'util';
+import axios, { AxiosInstance } from 'axios';
+import qs from 'querystring';
+import {
+  QuerySealInfoResult,
+  SealInfoMap,
+  SealInfoResp,
+  WorkloadInfo,
+} from '../types/sworker';
+import { parseObj } from '../utils';
 
 export default class SworkerApi {
   private readonly sworker: AxiosInstance;
@@ -10,7 +15,7 @@ export default class SworkerApi {
     this.sworker = axios.create({
       baseURL: sworkerAddr + '/api/v0',
       timeout: to,
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
@@ -25,13 +30,27 @@ export default class SworkerApi {
     try {
       const res = await this.sworker.post(
         '/storage/seal_end',
-        JSON.stringify({cid: cid})
+        JSON.stringify({ cid: cid }),
       );
 
       return res.status === 200;
     } catch (e) {
       return false;
     }
+  }
+
+  async getSealInfo(cid: string): Promise<SealInfoResp | null> {
+    const searchParams = qs.stringify({
+      cid,
+    });
+    const res = await this.sworker.get<QuerySealInfoResult>(
+      `/file/info?${searchParams}`,
+    );
+
+    if (res.status !== 200) {
+      return null;
+    }
+    return res.data[cid];
   }
 
   /**
@@ -44,13 +63,21 @@ export default class SworkerApi {
     try {
       const res = await this.sworker.post(
         '/storage/delete',
-        JSON.stringify({cid: cid})
+        JSON.stringify({ cid: cid }),
       );
 
       return res.status === 200;
     } catch (e) {
       return false;
     }
+  }
+
+  async workload(): Promise<WorkloadInfo> {
+    const res = await this.sworker.get('/workload');
+    if (!res || res.status !== 200) {
+      throw new Error(`invalid sworker response: ${res}`);
+    }
+    return parseObj(res.data);
   }
 
   /// READ methods
@@ -60,22 +87,11 @@ export default class SworkerApi {
    * @throws sWorker api error | timeout
    */
   async free(): Promise<[number, number]> {
-    try {
-      const res = await this.sworker.get('/workload');
-
-      if (res && res.status === 200) {
-        const body = parseObj(res.data);
-        return [
-          Number(body.srd['srd_complete']) + Number(body.srd['disk_available']),
-          Number(body.srd['sys_disk_available']),
-        ];
-      }
-
-      return [0, 0];
-    } catch (e) {
-      logger.warn(`Get free space from sWorker failed: ${e}`);
-      return [0, 0];
-    }
+    const workload = await this.workload();
+    return [
+      Number(workload.srd.srd_complete) + Number(workload.srd.disk_available),
+      Number(workload.srd.sys_disk_available),
+    ];
   }
 
   /// READ methods
@@ -83,15 +99,12 @@ export default class SworkerApi {
    * Query pendings information
    * @returns pendings json
    */
-  async pendings(): Promise<any | undefined> {
-    try {
-      const res = await this.sworker.get('/file/info_by_type?type=pending');
-      if (res && res.status === 200) {
-        return parseObj(res.data);
-      }
-      return undefined;
-    } catch (e) {
-      return undefined;
+  // eslint-disable-next-line
+  async pendings(): Promise<SealInfoMap> {
+    const res = await this.sworker.get('/file/info_by_type?type=pending');
+    if (res && res.status === 200) {
+      return parseObj(res.data);
     }
+    throw new Error(`sworker request failed with status: ${res.status}`);
   }
 }
