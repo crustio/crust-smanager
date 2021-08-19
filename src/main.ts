@@ -139,6 +139,7 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
   let lastBlockTime = Dayjs();
   logger.info('running event loop');
   do {
+    await api.ensureConnection();
     const curBlock = api.latestFinalizedBlock();
     if (lastBlock >= curBlock) {
       const now = Dayjs();

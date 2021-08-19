@@ -6,7 +6,7 @@ import {
   EventRecord,
   SignedBlock,
 } from '@polkadot/types/interfaces';
-import { bytesToMb, hexToString, parseObj, sleep } from '../utils';
+import { bytesToMb, formatError, hexToString, parseObj, sleep } from '../utils';
 import { typesBundleForPolkadot, crustTypes } from '@crustio/type-definitions';
 import _ from 'lodash';
 import { SLOT_LENGTH } from '../utils/consts';
@@ -318,13 +318,21 @@ export default class CrustApi {
     }
   }
 
+  public async ensureConnection(): Promise<void> {
+    if (!(await this.withApiReady())) {
+      logger.info('⛓ Connection broken, waiting for chain running.');
+      await Bluebird.delay(6000); // IMPORTANT: Sequential matters(need give time for create ApiPromise)
+      await this.initApi(); // Try to recreate api to connect running chain
+    }
+  }
+
   // TODO: add more error handling here
   private async withApiReady(): Promise<boolean> {
     try {
       await this.api.isReadyOrError;
       return true;
     } catch (e) {
-      logger.error(`💥 Error connecting with Chain: ${e.toString()}`);
+      logger.error(`💥 Error connecting with Chain: %s`, formatError(e));
       return false;
     }
   }
