@@ -89,8 +89,15 @@ async function handlePulling(
     }
 
     if (!isDiskEnoughForFile(record.size, totalSize, sworkerFree, sysFree)) {
-      logger.info('disk space is not enough for file %s', record.cid);
+      logger.info(
+        'disk space is not enough for file %s, total size: %s, sworker free %s, sysFree: %s',
+        record.cid,
+        totalSize,
+        sworkerFree,
+        sysFree,
+      );
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
+      continue;
     }
     await sealFile(
       context,
