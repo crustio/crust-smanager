@@ -344,6 +344,8 @@ async function sealFile(
       if (errStr.includes('TimeoutError')) {
         // fine
         logger.warn('ipfs pin timeout: %s', formatError(e));
+      } else if (e && e.name === 'AbortError') {
+        logger.warn('pin for "%s" was aborted', record.cid);
       } else {
         logger.warn(
           'got unexpected error while calling ipfs apis: %s',
