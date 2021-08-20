@@ -59,11 +59,22 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     );
   };
 
-  const updateFileTips = async (id: number, info: FileInfo) => {
-    await db.run(
-      'update file_record set amount = ?, last_updated = ? where id = ?',
-      [info.tips, getTimestamp(), id],
-    );
+  const updateFileTips = async (
+    id: number,
+    info: FileInfo,
+    resetStatus: boolean,
+  ) => {
+    if (!resetStatus) {
+      await db.run(
+        'update file_record set amount = ?, last_updated = ? where id = ?',
+        [info.tips, getTimestamp(), id],
+      );
+    } else {
+      await db.run(
+        'update file_record set amount = ?, last_updated = ?, status = ? where id = ?',
+        [info.tips, getTimestamp(), 'new', id],
+      );
+    }
   };
 
   const deleteCleanupRecords = async (cids: string[]): Promise<void> => {
@@ -100,6 +111,7 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
   const addFiles = async (
     files: FileInfo[],
     indexer: Indexer,
+    resetStatus: boolean,
   ): Promise<{ newFiles: number; updated: number }> => {
     const existingInfos = await getFileInfos(
       _.map(files, (f) => f.cid),
@@ -117,7 +129,7 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     await Bluebird.mapSeries(newFiles, (f) => addFileRecord(f, indexer));
 
     await Bluebird.mapSeries(existingFiles, (f) =>
-      updateFileTips(existingMap[f.cid].id, f),
+      updateFileTips(existingMap[f.cid].id, f, resetStatus),
     );
     // delete cleanup records for new files
     const cids = _.map(files, (f) => f.cid);

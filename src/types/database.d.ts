@@ -50,6 +50,7 @@ export interface DbOrderOperator {
   addFiles: (
     files: FileInfo[],
     indexer: Indexer,
+    resetStatus: boolean,
   ) => Promise<{ newFiles: number; updated: number }>;
   getFileInfo: (cid: string, indexer: Indexer) => Promise<FileRecord | null>;
   getFileInfos: (cids: string[], indexer: Indexer) => Promise<FileRecord[]>;

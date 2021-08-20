@@ -129,7 +129,7 @@ async function dbIndexer(
         indexOneFile(f.cid, context, logger, lastBlockTime),
       );
       const validInfos = _.filter(fileInfos);
-      await fileOrderOp.addFiles(validInfos, 'dbScan');
+      await fileOrderOp.addFiles(validInfos, 'dbScan', false);
       lastIndexedKey = _.last(cids).key;
       await config.saveString(KeyLastIndexedKey, lastIndexedKey);
     } catch (e) {
