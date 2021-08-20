@@ -333,7 +333,10 @@ async function sealFile(
       if (r) {
         logger.info('file "%s" sealed successfuly', record.cid);
       } else {
-        logger.warn('file "%s" sealed failed', record.cid);
+        logger.info(
+          'ipfs pin for "%s" returned false,  ipfs might being puling or already pulled this file.',
+          record.cid,
+        );
       }
     })
     .catch((e) => {
