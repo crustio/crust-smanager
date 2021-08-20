@@ -25,6 +25,8 @@ import {
 } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
+const StrategiesCount = 2; // NOTE: should be synced with PullingStrategy
+
 /**
  * task to schedule ipfs file pulling
  */
@@ -46,7 +48,16 @@ async function handlePulling(
   logger.info('files pulling started');
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
-  for (let i = 0; i < maxFilesPerRound && !isStopped(); i++) {
+
+  const noRecordStrategies = new Set();
+
+  for (
+    let i = 0;
+    i < maxFilesPerRound &&
+    !isStopped() &&
+    noRecordStrategies.size < StrategiesCount;
+    i++
+  ) {
     await Bluebird.delay(2 * 1000);
     const lastBlockTime = await getLatestBlockTime(context.database);
     if (!lastBlockTime) {
@@ -85,6 +96,7 @@ async function handlePulling(
     );
     if (!record) {
       logger.info('no pending file records for strategy: %s', strategy);
+      noRecordStrategies.add(strategy);
       continue;
     }
 
