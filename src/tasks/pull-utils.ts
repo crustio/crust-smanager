@@ -146,7 +146,7 @@ function probabilityFilter(context: AppContext): boolean {
   if (nodeCount === 0) {
     pTake = 0.0;
   } else {
-    pTake = 150 / nodeCount;
+    pTake = 300 / nodeCount;
   }
 
   const memberCount = _.max([1, context.groupInfo.totalMembers]);
