@@ -334,7 +334,7 @@ async function sealFile(
         logger.info('file "%s" sealed successfuly', record.cid);
       } else {
         logger.info(
-          'ipfs pin for "%s" returned false,  ipfs might being puling or already pulled this file.',
+          'ipfs pin for "%s" returned false,  ipfs might being pulling or already pulled this file.',
           record.cid,
         );
       }

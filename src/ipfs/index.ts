@@ -31,7 +31,7 @@ export default class IpfsApi {
 
     const result = async () => {
       const cid = new CID(c);
-      const pin = this.ipfs.pin.add(new CID(cid), { timeout: to, signal });
+      const pin = this.ipfs.pin.add(cid, { timeout: to, signal });
       return cid.equals(pin) as boolean;
     };
 
