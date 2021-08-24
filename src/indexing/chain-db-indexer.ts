@@ -25,6 +25,9 @@ const MarketFilesKey =
 
 const KeyLastIndexedKey = 'db-indexer:LastIndexedKey';
 const KeyLastDoneTime = 'db-indexer:LastDoneTime';
+const CooldownDuration = Dayjs.duration({
+  hours: 1,
+});
 
 export async function createDbIndexer(
   context: AppContext,
@@ -67,16 +70,13 @@ async function dbIndexer(
   }
 
   const isInCooldownPeriod = async () => {
-    const CooldownTime = dayjs.duration({
-      minutes: 10,
-    });
     const lastCompeleted = await config.readTime(KeyLastDoneTime);
     if (!lastCompeleted) {
       return false;
     }
     return (
       dayjs.duration(dayjs().diff(lastCompeleted)).asSeconds() <
-      CooldownTime.asSeconds()
+      CooldownDuration.asSeconds()
     );
   };
 

@@ -56,7 +56,7 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: {
-          existedFilesWeight: 1,
+          dbFilesWeight: 1,
           newFilesWeight: 1,
         },
         minSrdRatio: 70,
@@ -67,7 +67,8 @@ describe('config validation', () => {
         maxReplicas: 0,
       },
     };
-    expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
+    expect(validateConfig(customWeights).scheduler.strategy).toContain({
+      dbFilesWeight: 1,
       existedFilesWeight: 1,
       newFilesWeight: 1,
     });
@@ -99,7 +100,7 @@ describe('config validation', () => {
       ...defaultConfig,
       scheduler: {
         strategy: {
-          existedFilesWeight: 10,
+          dbFilesWeight: 10,
           newFilesWeight: 10,
         },
         minSrdRatio: 70,
@@ -111,8 +112,9 @@ describe('config validation', () => {
       },
     };
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
-      existedFilesWeight: 50,
+      dbFilesWeight: 50,
       newFilesWeight: 50,
+      existedFilesWeight: 0,
     });
   });
 });

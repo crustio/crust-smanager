@@ -25,7 +25,8 @@ const telemetryConfigSchema = Joi.object().keys({
 
 const strategyWeightsSchema = Joi.object().keys({
   existedFilesWeight: Joi.number().default(0),
-  newFilesWeight: Joi.number().default(10),
+  dbFilesWeight: Joi.number().default(0),
+  newFilesWeight: Joi.number().default(100),
 });
 
 const schedulerConfig = Joi.object().keys({
@@ -40,7 +41,7 @@ const schedulerConfig = Joi.object().keys({
   minFileSize: Joi.number().min(0).default(0),
   maxFileSize: Joi.number().min(0).default(0),
   minReplicas: Joi.number().min(0).default(40),
-  maxReplicas: Joi.number().min(0).default(120),
+  maxReplicas: Joi.number().min(0).default(100),
 });
 
 const configSchema = Joi.object()

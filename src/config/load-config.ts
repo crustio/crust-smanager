@@ -10,17 +10,17 @@ import _ from 'lodash';
 import { logger } from '../utils/logger';
 
 const defaultsStrategyWeights: StrategyWeights = {
-  existedFilesWeight: 50,
+  dbFilesWeight: 50,
   newFilesWeight: 40,
 };
 
 const srdFirstStrategyWeights: StrategyWeights = {
-  existedFilesWeight: 80,
+  dbFilesWeight: 80,
   newFilesWeight: 10,
 };
 
 const newfileFirstStrategyWeights: StrategyWeights = {
-  existedFilesWeight: 10,
+  dbFilesWeight: 10,
   newFilesWeight: 80,
 };
 
@@ -34,12 +34,12 @@ function getNormalizedWeights(strategy: StrategyConfig): StrategyWeights {
       return newfileFirstStrategyWeights;
     default: {
       // normaliz weights to percentage based weights
-      const weights = [strategy.existedFilesWeight, strategy.newFilesWeight];
+      const weights = [strategy.dbFilesWeight, strategy.newFilesWeight];
       const totalWeights = _.sum(weights);
       if (totalWeights > 0) {
         const normalized = _.map(weights, (w) => (w / totalWeights) * 100);
         return {
-          existedFilesWeight: normalized[0],
+          dbFilesWeight: normalized[0],
           newFilesWeight: normalized[1],
         };
       }

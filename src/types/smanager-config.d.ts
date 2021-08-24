@@ -21,7 +21,7 @@ export interface NodeConfig {
   role: NodeRole;
 }
 
-type PullingStrategy = 'existedFilesWeight' | 'newFilesWeight';
+type PullingStrategy = 'dbFilesWeight' | 'newFilesWeight';
 
 export type StrategyWeights = { [key in PullingStrategy]: number };
 

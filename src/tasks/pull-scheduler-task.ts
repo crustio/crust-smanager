@@ -316,7 +316,7 @@ async function getPendingFileByStrategy(
   switch (strategy) {
     case 'newFilesWeight':
       return fileOrderOps.getPendingFileRecord('chainEvent', smallFile);
-    case 'existedFilesWeight':
+    case 'dbFilesWeight':
       return fileOrderOps.getPendingFileRecord('dbScan', smallFile);
   }
 }

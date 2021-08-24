@@ -63,7 +63,9 @@ export function filterFile(
   } catch (ex) {
     return 'invalidCID';
   }
-  if (strategey === 'newFilesWeight' && !probabilityFilter(context)) {
+
+  const maxReplicas = strategey === 'newFilesWeight' ? 300 : 160;
+  if (!probabilityFilter(context, maxReplicas)) {
     return 'pfSkipped';
   }
   const fileSizeInMb = bytesToMb(record.size);
@@ -75,7 +77,7 @@ export function filterFile(
     return 'sizeTooLarge';
   }
   if (
-    strategey === 'existedFilesWeight' &&
+    strategey === 'dbFilesWeight' &&
     config.minReplicas > 0 &&
     record.replicas < config.minReplicas
   ) {
@@ -136,7 +138,7 @@ export function estimateIpfsPinTimeout(size: number /** in bytes */): number {
   return BasePinTimeout + (size / 1024 / 200) * 1000;
 }
 
-function probabilityFilter(context: AppContext): boolean {
+function probabilityFilter(context: AppContext, maxReplicas: number): boolean {
   if (!context.nodeInfo) {
     return false;
   }
@@ -146,7 +148,7 @@ function probabilityFilter(context: AppContext): boolean {
   if (nodeCount === 0) {
     pTake = 0.0;
   } else {
-    pTake = 300 / nodeCount;
+    pTake = maxReplicas / nodeCount;
   }
 
   const memberCount = _.max([1, context.groupInfo.totalMembers]);
