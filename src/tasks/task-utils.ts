@@ -14,6 +14,7 @@ export async function makeIntervalTask(
   context: AppContext,
   loggerParent: Logger,
   handlerFn: Function3<AppContext, Logger, IsStopped, Promise<void>>,
+  showIndicateLog = true,
 ): Promise<SimpleTask> {
   if (startDelay <= 0 || interval <= 0) {
     throw new Error('invalid arg, interval should be greater than 0');
@@ -27,7 +28,9 @@ export async function makeIntervalTask(
       return;
     }
     try {
-      logger.info('start task: "%s"', name);
+      if (showIndicateLog) {
+        logger.info('start task: "%s"', name);
+      }
       await handlerFn(context, logger, () => stopped);
     } catch (e) {
       logger.error(
@@ -36,7 +39,9 @@ export async function makeIntervalTask(
         formatError(e),
       );
     } finally {
-      logger.info('task done: "%s"', name);
+      if (showIndicateLog) {
+        logger.info('task done: "%s"', name);
+      }
       if (!stopped) {
         timer = setTimeout(doInterval, interval);
       }

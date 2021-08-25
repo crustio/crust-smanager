@@ -45,7 +45,6 @@ async function handlePulling(
   }
 
   const [sworkerFree, sysFree] = await getFreeSpace(context);
-  logger.info('files pulling started');
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
   const noRecordStrategies = new Set();
@@ -58,7 +57,7 @@ async function handlePulling(
     (f) => f.size < LargeFileSize,
   );
 
-  logger.info('current sealing %d files = %d small files + %d large files, total size: %d', sealingCount, smallFiles, largeFiles, totalSize);
+  logger.info('current sealing %d files = %d small files + %d large files, total size: %d', sealingCount, _.size(smallFiles), _.size(largeFiles), totalSize);
   if (sealingCount >= maxForSmall + maxForLarge) {
     logger.info('too many pending files, skip this round');
     return;
@@ -77,7 +76,7 @@ async function handlePulling(
       logger.info('can not get block time from db, skip this round');
       break;
     }
-    
+
     const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
     const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
     if (sealingCount >= maxForSmall + maxForLarge) {
