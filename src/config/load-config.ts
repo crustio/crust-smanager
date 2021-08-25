@@ -11,7 +11,7 @@ import { logger } from '../utils/logger';
 
 const defaultsStrategyWeights: StrategyWeights = {
   dbFilesWeight: 50,
-  newFilesWeight: 40,
+  newFilesWeight: 50,
 };
 
 const srdFirstStrategyWeights: StrategyWeights = {
@@ -20,7 +20,7 @@ const srdFirstStrategyWeights: StrategyWeights = {
 };
 
 const newfileFirstStrategyWeights: StrategyWeights = {
-  dbFilesWeight: 10,
+  dbFilesWeight: 20,
   newFilesWeight: 80,
 };
 

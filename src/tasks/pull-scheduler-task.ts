@@ -48,9 +48,22 @@ async function handlePulling(
   logger.info('files pulling started');
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
-
   const noRecordStrategies = new Set();
 
+  const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
+  const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
+  const sealingFiles = await pinRecordOps.getSealingRecords();
+  const [smallFiles, largeFiles] = _.partition(
+    sealingFiles,
+    (f) => f.size < LargeFileSize,
+  );
+
+  logger.info('current sealing %d files = %d small files + %d large files, total size: %d', sealingCount, smallFiles, largeFiles, totalSize);
+  if (sealingCount >= maxForSmall + maxForLarge) {
+    logger.info('too many pending files, skip this round');
+    return;
+  }
+    
   for (
     let i = 0;
     i < maxFilesPerRound &&
@@ -61,21 +74,15 @@ async function handlePulling(
     await Bluebird.delay(2 * 1000);
     const lastBlockTime = await getLatestBlockTime(context.database);
     if (!lastBlockTime) {
-      logger.warn('can not get block time from db, skip this round');
-      await Bluebird.delay(5 * 1000);
+      logger.info('can not get block time from db, skip this round');
       break;
     }
+    
     const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
     const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
     if (sealingCount >= maxForSmall + maxForLarge) {
-      logger.info('current sealing %d files, skip this round', sealingCount);
       break;
     }
-    logger.info(
-      'current sealing %d files, total size: %d',
-      sealingCount,
-      totalSize,
-    );
 
     const sealingFiles = await pinRecordOps.getSealingRecords();
     const [smallFiles, largeFiles] = _.partition(
@@ -86,7 +93,6 @@ async function handlePulling(
     const sealLarge = _.size(largeFiles) < maxForLarge;
 
     const strategy = pickStrategy();
-    logger.info('pull file using strategy: %s', strategy);
     const record = await getOneFileByStrategy(
       context,
       logger,
@@ -95,7 +101,6 @@ async function handlePulling(
       { strategy, sealSmall, sealLarge },
     );
     if (!record) {
-      logger.info('no pending file records for strategy: %s', strategy);
       noRecordStrategies.add(strategy);
       continue;
     }
@@ -208,13 +213,8 @@ async function getOneFileByStrategy(
 ): Promise<FileRecord | null> {
   const { strategy } = options;
   do {
-    const record = await getPendingFile(fileOrderOps, options, logger);
+    const record = await getPendingFile(fileOrderOps, options);
     if (!record) {
-      logger.info(
-        'no pending files for strategy: %s, options: %o',
-        strategy,
-        options,
-      );
       return null;
     }
     const status = filterFile(record, strategy, blockAndTime, context);
@@ -282,7 +282,6 @@ async function getFreeSpace(context: AppContext): Promise<[number, number]> {
 async function getPendingFile(
   fileOrderOps: DbOrderOperator,
   sealOptions: SealOption,
-  logger: Logger,
 ): DbResult<FileRecord> {
   const { strategy, sealLarge, sealSmall } = sealOptions;
   if (sealLarge) {
@@ -295,10 +294,6 @@ async function getPendingFile(
       return record;
     }
 
-    logger.info(
-      'no pending large files for strategey: %s, checking small files',
-      strategy,
-    );
     return await getPendingFileByStrategy(fileOrderOps, strategy, true);
   }
 
@@ -371,10 +366,10 @@ export async function createPullSchedulerTask(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  const pullingInterval = 5 * 60 * 1000; // trival, period run it if there is no pending files in the db
+  const pullingInterval = 1 * 60 * 1000; // trival, period run it if there is no pending files in the db
 
   return makeIntervalTask(
-    30 * 1000,
+    60 * 1000,
     pullingInterval,
     'files-pulling',
     context,

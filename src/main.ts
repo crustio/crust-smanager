@@ -40,7 +40,7 @@ async function main() {
   const api = await timeoutOrError(
     'connect to chain',
     startChain(config),
-    30 * 1000,
+    240 * 1000,
   );
 
   const database = await loadDb(config);
@@ -115,8 +115,8 @@ async function startChain(config: NormalizedConfig) {
 }
 
 async function waitChainSynced(context: AppContext): Promise<void> {
-  // 1 day
-  const maxWait = 28800;
+  // 2 days
+  const maxWait = 57600;
   let tick = 0;
   let successCount = 0;
   logger.info('waiting for chain synced');
