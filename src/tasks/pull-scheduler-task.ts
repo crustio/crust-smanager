@@ -337,7 +337,7 @@ async function sealFile(
   result
     .then((r) => {
       if (r) {
-        logger.info('file "%s" sealed successfuly', record.cid);
+        logger.info('file "%s" sealed successfully', record.cid);
       } else {
         logger.info(
           'ipfs pin for "%s" returned false,  ipfs might being pulling or already pulled this file.',

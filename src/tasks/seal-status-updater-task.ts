@@ -43,17 +43,12 @@ async function checkAndUpdateStatus(
   const now = getTimestamp();
   const totalTimeUsed = now - record.pin_at;
   if (totalTimeUsed < MinSealStartTime) {
-    logger.info(
-      'file "%s" was sealed recently, skip checking sealing status',
-      record.cid,
-    );
     return;
   }
   if (
     record.last_check_time > 0 &&
     now - record.last_check_time < MinSealStartTime
   ) {
-    logger.info('file "%s" was checked recently, skip checking', record.cid);
     return;
   }
   const lastCheckedTime =
@@ -73,6 +68,11 @@ async function checkAndUpdateStatus(
       );
       await markRecordAsFailed(record, pinRecordOps, context, logger, true);
     } else {
+      logger.info(
+        'file "%s" is sealing, update sealed size: %d',
+        record.cid,
+        sealedSize,
+      );
       await pinRecordOps.updatePinRecordSealStatus(
         record.id,
         sealedSize,
