@@ -12,14 +12,15 @@ async function handleUpdate(context: AppContext, logger: Logger) {
       logger.warn('⚠️ no sworker identity');
       return;
     }
-    logger.info('identity: %o', sworkIdentity);
     const groupOwner = sworkIdentity.group;
     if (!groupOwner) {
       logger.warn('⚠️ Wait for the node to join group');
+      context.groupInfo = null;
       return;
     }
     if (api.getChainAccount() === groupOwner) {
       logger.error("💥 Can't use owner account to configure isolation/member");
+      context.groupInfo = null;
       return;
     }
 
@@ -44,11 +45,12 @@ export async function createGroupInfoUpdateTask(
 ): Promise<SimpleTask> {
   const updateInterval = 1 * 60 * 1000; // update group info every minute
   return makeIntervalTask(
-    5 * 1000,
+    30 * 1000,
     updateInterval,
     'group-info',
     context,
     loggerParent,
     handleUpdate,
+    false,
   );
 }

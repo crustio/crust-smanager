@@ -25,6 +25,8 @@ import {
 } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
+const StrategiesCount = 2; // NOTE: should be synced with PullingStrategy
+
 /**
  * task to schedule ipfs file pulling
  */
@@ -35,34 +37,57 @@ async function handlePulling(
 ): Promise<void> {
   const pickStrategy = makeStrategySelection(context);
   const pinRecordOps = createPinRecordOperator(context.database);
+
   const { database } = context;
   if (!(await isReady(context, logger))) {
     logger.info('skip pulling as node not ready');
     return;
   }
 
-  logger.info('files pulling started');
+  const [sworkerFree, sysFree] = await getFreeSpace(context);
   const maxFilesPerRound = 100;
   const fileOrderOps = createFileOrderOperator(database);
-  for (let i = 0; i < maxFilesPerRound && !isStopped(); i++) {
+  const noRecordStrategies = new Set();
+
+  const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
+  const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
+  const sealingFiles = await pinRecordOps.getSealingRecords();
+  const [smallFiles, largeFiles] = _.partition(
+    sealingFiles,
+    (f) => f.size < LargeFileSize,
+  );
+
+  logger.info(
+    'current sealing %d files = %d small files + %d large files, total size: %d',
+    sealingCount,
+    _.size(smallFiles),
+    _.size(largeFiles),
+    totalSize,
+  );
+  if (sealingCount >= maxForSmall + maxForLarge) {
+    logger.info('too many pending files, skip this round');
+    return;
+  }
+
+  for (
+    let i = 0;
+    i < maxFilesPerRound &&
+    !isStopped() &&
+    noRecordStrategies.size < StrategiesCount;
+    i++
+  ) {
     await Bluebird.delay(2 * 1000);
     const lastBlockTime = await getLatestBlockTime(context.database);
     if (!lastBlockTime) {
-      logger.warn('can not get block time from db, skip this round');
-      await Bluebird.delay(5 * 1000);
+      logger.info('can not get block time from db, skip this round');
       break;
     }
+
     const [sealingCount, totalSize] = await pinRecordOps.getSealingInfo();
     const [maxForSmall, maxForLarge] = getMaxSealTasks(context);
     if (sealingCount >= maxForSmall + maxForLarge) {
-      logger.info('current sealing %d files, skip this round', sealingCount);
       break;
     }
-    logger.info(
-      'current sealing %d files, total size: %d',
-      sealingCount,
-      totalSize,
-    );
 
     const sealingFiles = await pinRecordOps.getSealingRecords();
     const [smallFiles, largeFiles] = _.partition(
@@ -73,7 +98,6 @@ async function handlePulling(
     const sealLarge = _.size(largeFiles) < maxForLarge;
 
     const strategy = pickStrategy();
-    logger.info('pull file using strategy: %s', strategy);
     const record = await getOneFileByStrategy(
       context,
       logger,
@@ -82,13 +106,20 @@ async function handlePulling(
       { strategy, sealSmall, sealLarge },
     );
     if (!record) {
-      logger.info('no pending file records for strategy: %s', strategy);
+      noRecordStrategies.add(strategy);
       continue;
     }
-    const [sworkerFree, sysFree] = await getFreeSpace(context);
+
     if (!isDiskEnoughForFile(record.size, totalSize, sworkerFree, sysFree)) {
-      logger.info('disk space is not enough for file %s', record.cid);
+      logger.info(
+        'disk space is not enough for file %s, total size: %s, sworker free %s, sysFree: %s',
+        record.cid,
+        totalSize,
+        sworkerFree,
+        sysFree,
+      );
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
+      continue;
     }
     await sealFile(
       context,
@@ -187,22 +218,17 @@ async function getOneFileByStrategy(
 ): Promise<FileRecord | null> {
   const { strategy } = options;
   do {
-    const record = await getPendingFile(fileOrderOps, options, logger);
+    const record = await getPendingFile(fileOrderOps, options);
     if (!record) {
-      logger.info(
-        'no pending files for strategy: %s, options: %o',
-        strategy,
-        options,
-      );
       return null;
     }
-    if (await isSealDone(record.cid, context.sworkerApi, logger)) {
-      await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
-      continue;
-    }
-    const status = filterFile(record, strategy, blockAndTime, context);
+    const status = await filterFile(record, strategy, blockAndTime, context);
     switch (status) {
       case 'good':
+        if (await isSealDone(record.cid, context.sworkerApi, logger)) {
+          await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
+          break;
+        }
         return record;
       case 'invalidCID':
       case 'invalidNoReplica':
@@ -261,7 +287,6 @@ async function getFreeSpace(context: AppContext): Promise<[number, number]> {
 async function getPendingFile(
   fileOrderOps: DbOrderOperator,
   sealOptions: SealOption,
-  logger: Logger,
 ): DbResult<FileRecord> {
   const { strategy, sealLarge, sealSmall } = sealOptions;
   if (sealLarge) {
@@ -274,10 +299,6 @@ async function getPendingFile(
       return record;
     }
 
-    logger.info(
-      'no pending large files for strategey: %s, checking small files',
-      strategy,
-    );
     return await getPendingFileByStrategy(fileOrderOps, strategy, true);
   }
 
@@ -295,7 +316,7 @@ async function getPendingFileByStrategy(
   switch (strategy) {
     case 'newFilesWeight':
       return fileOrderOps.getPendingFileRecord('chainEvent', smallFile);
-    case 'existedFilesWeight':
+    case 'dbFilesWeight':
       return fileOrderOps.getPendingFileRecord('dbScan', smallFile);
   }
 }
@@ -322,9 +343,12 @@ async function sealFile(
   result
     .then((r) => {
       if (r) {
-        logger.info('file "%s" sealed successfuly', record.cid);
+        logger.info('file "%s" sealed successfully', record.cid);
       } else {
-        logger.warn('file "%s" sealed failed', record.cid);
+        logger.info(
+          'ipfs pin for "%s" returned false,  ipfs might being pulling or already pulled this file.',
+          record.cid,
+        );
       }
     })
     .catch((e) => {
@@ -332,6 +356,8 @@ async function sealFile(
       if (errStr.includes('TimeoutError')) {
         // fine
         logger.warn('ipfs pin timeout: %s', formatError(e));
+      } else if (e && e.name === 'AbortError') {
+        logger.warn('pin for "%s" was aborted', record.cid);
       } else {
         logger.warn(
           'got unexpected error while calling ipfs apis: %s',
@@ -345,10 +371,10 @@ export async function createPullSchedulerTask(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  const pullingInterval = 5 * 60 * 1000; // trival, period run it if there is no pending files in the db
+  const pullingInterval = 1 * 60 * 1000; // trival, period run it if there is no pending files in the db
 
   return makeIntervalTask(
-    30 * 1000,
+    60 * 1000,
     pullingInterval,
     'files-pulling',
     context,

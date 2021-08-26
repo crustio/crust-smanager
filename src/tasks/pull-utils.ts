@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import { FileRecord, FileStatus } from '../types/database';
 import { PullingStrategy } from '../types/smanager-config';
 import IpfsHttpClient from 'ipfs-http-client';
-import { bytesToMb } from '../utils';
+import { bytesToMb, formatError } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
 import { AppContext } from '../types/context';
@@ -10,6 +10,7 @@ import seedrandom from 'seedrandom';
 import _ from 'lodash';
 import SworkerApi from '../sworker';
 import { Logger } from 'winston';
+import { logger } from '../utils/logger';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
@@ -44,12 +45,12 @@ const MinLifeTime = Dayjs.duration({
 });
 
 // TODO: add some tests
-export function filterFile(
+export async function filterFile(
   record: FileRecord,
   strategey: PullingStrategy,
   lastBlockTime: BlockAndTime,
   context: AppContext,
-): FilterFileResult {
+): Promise<FilterFileResult> {
   const config = context.config.scheduler;
   const groupInfo = context.groupInfo;
   try {
@@ -63,7 +64,9 @@ export function filterFile(
   } catch (ex) {
     return 'invalidCID';
   }
-  if (strategey === 'newFilesWeight' && !probabilityFilter(context)) {
+
+  const maxReplicas = strategey === 'newFilesWeight' ? 300 : 160;
+  if (!probabilityFilter(context, maxReplicas)) {
     return 'pfSkipped';
   }
   const fileSizeInMb = bytesToMb(record.size);
@@ -71,17 +74,17 @@ export function filterFile(
   if (config.minFileSize > 0 && fileSizeInMb < config.minFileSize) {
     return 'sizeTooSmall';
   }
-  if (config.maxFileSize > 0 && fileSizeInMb > config.minFileSize) {
+  if (config.maxFileSize > 0 && fileSizeInMb > config.maxFileSize) {
     return 'sizeTooLarge';
   }
   if (
-    strategey === 'existedFilesWeight' &&
+    strategey === 'dbFilesWeight' &&
     config.minReplicas > 0 &&
     record.replicas < config.minReplicas
   ) {
     return 'replicasNotEnough';
   }
-  if (config.maxReplicas > 0 && record.replicas >= config.maxFileSize) {
+  if (config.maxReplicas > 0 && record.replicas >= config.maxReplicas) {
     return 'tooManyReplicas';
   }
   if (record.indexer === 'dbScan') {
@@ -105,6 +108,16 @@ export function filterFile(
       return 'lifeTimeTooShort';
     }
   }
+  const sealCoordinator = context.sealCoordinator;
+  if (sealCoordinator != null) {
+    const shouldSeal = await sealCoordinator.markSeal(record.cid);
+    if (shouldSeal.seal && shouldSeal.reason === 'ok') {
+      return 'good';
+    }
+    logger.info(`seal for file "${record.cid}" skipped by seal coordinator`);
+    return 'nodeSkipped';
+  }
+
   return 'good';
 }
 
@@ -136,7 +149,7 @@ export function estimateIpfsPinTimeout(size: number /** in bytes */): number {
   return BasePinTimeout + (size / 1024 / 200) * 1000;
 }
 
-function probabilityFilter(context: AppContext): boolean {
+function probabilityFilter(context: AppContext, maxReplicas: number): boolean {
   if (!context.nodeInfo) {
     return false;
   }
@@ -145,10 +158,8 @@ function probabilityFilter(context: AppContext): boolean {
   const nodeCount = context.nodeInfo.nodeCount;
   if (nodeCount === 0) {
     pTake = 0.0;
-  } else if (nodeCount <= 2000) {
-    pTake = 100.0 / nodeCount;
   } else {
-    pTake = 150 / nodeCount;
+    pTake = maxReplicas / nodeCount;
   }
 
   const memberCount = _.max([1, context.groupInfo.totalMembers]);
@@ -172,7 +183,10 @@ export async function isSealDone(
     const ret = await sworkerApi.getSealInfo(cid);
     return ret && (ret.type === 'valid' || ret.type === 'lost');
   } catch (ex) {
-    logger.error('unexpected error while calling sworker api');
+    logger.error(
+      'unexpected error while calling sworker api: %s',
+      formatError(ex),
+    );
     throw ex;
   }
 }

@@ -49,7 +49,7 @@ export async function createLatestIndexer(
       }
       if (!_.isEmpty(newFiles)) {
         // create file record for new files
-        await fileOrderOp.addFiles(newFiles, 'chainEvent');
+        await fileOrderOp.addFiles(newFiles, 'chainEvent', true);
       }
       if (!_.isEmpty(closedFiles)) {
         // create a cleanup record for closed files

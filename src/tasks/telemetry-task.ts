@@ -32,10 +32,14 @@ async function handleReport(context: AppContext, logger: Logger) {
   const stats = await collectStats(context, logger);
   if (stats.sworker) {
     logger.info('reporting stats to telemtry: %o', stats);
-    const resp = await axios.post(telemetryUrl, stats, {
-      timeout: 10 * 1000,
-    });
-    logger.info('telemetry response: %s', JSON.stringify(resp.data));
+    try {
+      const resp = await axios.post(telemetryUrl, stats, {
+        timeout: 120 * 1000,
+      });
+      logger.info('telemetry response: %s', JSON.stringify(resp.data));
+    } catch (ex) {
+      logger.warn('telemetry report failed');
+    }
   } else {
     logger.info('not report to telemetry, sworker is offline');
   }
@@ -91,6 +95,7 @@ async function collectStats(
     cleanupStats: {
       deletedCount,
     },
+    hasSealCoordinator: !!context.sealCoordinator,
   };
 }
 

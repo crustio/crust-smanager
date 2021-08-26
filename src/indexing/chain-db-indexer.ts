@@ -25,6 +25,9 @@ const MarketFilesKey =
 
 const KeyLastIndexedKey = 'db-indexer:LastIndexedKey';
 const KeyLastDoneTime = 'db-indexer:LastDoneTime';
+const CooldownDuration = Dayjs.duration({
+  hours: 1,
+});
 
 export async function createDbIndexer(
   context: AppContext,
@@ -67,16 +70,13 @@ async function dbIndexer(
   }
 
   const isInCooldownPeriod = async () => {
-    const CooldownTime = dayjs.duration({
-      minutes: 10,
-    });
     const lastCompeleted = await config.readTime(KeyLastDoneTime);
     if (!lastCompeleted) {
       return false;
     }
     return (
       dayjs.duration(dayjs().diff(lastCompeleted)).asSeconds() <
-      CooldownTime.asSeconds()
+      CooldownDuration.asSeconds()
     );
   };
 
@@ -129,7 +129,7 @@ async function dbIndexer(
         indexOneFile(f.cid, context, logger, lastBlockTime),
       );
       const validInfos = _.filter(fileInfos);
-      await fileOrderOp.addFiles(validInfos, 'dbScan');
+      await fileOrderOp.addFiles(validInfos, 'dbScan', false);
       lastIndexedKey = _.last(cids).key;
       await config.saveString(KeyLastIndexedKey, lastIndexedKey);
     } catch (e) {
@@ -165,10 +165,10 @@ async function indexOneFile(
   const life = dayjs.duration(expireTime.diff(now));
   if (life.asSeconds() < MinLifeTime.asSeconds()) {
     logger.info(
-      'skip file %s, life(%d days) is shorter than configured min life period: %d days',
+      'skip file %s, life(%s) is shorter than configured min life period: %s',
       cid,
-      life.asDays().toFixed(1),
-      MinLifeTime.asDays().toFixed(1),
+      life.humanize(),
+      MinLifeTime.humanize(),
     );
     return null;
   }

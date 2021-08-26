@@ -1,6 +1,7 @@
 import { BigNumber } from 'bignumber.js';
 import { addrToHostPort } from '../utils';
 import IpfsHttpClient from 'ipfs-http-client';
+import { AbortController } from 'native-abort-controller';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 
@@ -30,7 +31,7 @@ export default class IpfsApi {
 
     const result = async () => {
       const cid = new CID(c);
-      const pin = this.ipfs.pin.add(new CID(cid), { timeout: to, signal });
+      const pin = await this.ipfs.pin.add(cid, { timeout: to, signal });
       return cid.equals(pin) as boolean;
     };
 

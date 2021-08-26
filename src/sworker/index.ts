@@ -40,17 +40,24 @@ export default class SworkerApi {
   }
 
   async getSealInfo(cid: string): Promise<SealInfoResp | null> {
-    const searchParams = qs.stringify({
-      cid,
-    });
-    const res = await this.sworker.get<QuerySealInfoResult>(
-      `/file/info?${searchParams}`,
-    );
+    try {
+      const searchParams = qs.stringify({
+        cid,
+      });
+      const res = await this.sworker.get<QuerySealInfoResult>(
+        `/file/info?${searchParams}`,
+      );
 
-    if (res.status !== 200) {
-      return null;
+      if (res.status !== 200) {
+        return null;
+      }
+      return res.data[cid];
+    } catch (e) {
+      if (e.response && e.response.status === 404) {
+        return null;
+      }
+      throw e;
     }
-    return res.data[cid];
   }
 
   /**

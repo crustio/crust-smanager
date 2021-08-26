@@ -5,6 +5,7 @@ import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
 import IpfsApi from './ipfs';
+import { makeSealCoordinatorApiFromConfig } from './services/seal-coordinator';
 import SworkerApi from './sworker';
 import { createSimpleTasks } from './tasks';
 import { createChainHeightLogger } from './tasks/chain-height-logger-task';
@@ -40,12 +41,16 @@ async function main() {
   const api = await timeoutOrError(
     'connect to chain',
     startChain(config),
-    30 * 1000,
+    240 * 1000,
   );
 
   const database = await loadDb(config);
   const ipfsApi = new IpfsApi(config.ipfs.endPoint, IpfsTimeout);
   const sworkerApi = new SworkerApi(config.sworker.endPoint, SworkerTimeout);
+  const sealCoordinator = await makeSealCoordinatorApiFromConfig(
+    config,
+    logger,
+  );
 
   const context: AppContext = {
     api,
@@ -56,6 +61,7 @@ async function main() {
     groupInfo: null,
     ipfsApi,
     sworkerApi,
+    sealCoordinator,
     startTime: Dayjs(),
   };
   const simpleTasks = await loadSimpleTasks(context);
@@ -115,8 +121,8 @@ async function startChain(config: NormalizedConfig) {
 }
 
 async function waitChainSynced(context: AppContext): Promise<void> {
-  // 1 day
-  const maxWait = 28800;
+  // 2 days
+  const maxWait = 57600;
   let tick = 0;
   let successCount = 0;
   logger.info('waiting for chain synced');
@@ -139,6 +145,7 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
   let lastBlockTime = Dayjs();
   logger.info('running event loop');
   do {
+    await api.ensureConnection();
     const curBlock = api.latestFinalizedBlock();
     if (lastBlock >= curBlock) {
       const now = Dayjs();
