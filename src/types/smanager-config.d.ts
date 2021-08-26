@@ -37,6 +37,12 @@ export interface SchedulerConfig {
   maxReplicas: number; // max replicas limit for all indexer
 }
 
+export interface SealCoordinatorConfig {
+  endPoint: string; // endpoint for seal coordinator, e.g. http://192.168.1.254:3000/
+  nodeUUID: string; // unique id to identify this node
+  autoToken: string; // the auth token to use which would be used as the Bear Token http header
+}
+
 export interface SManagerConfig {
   chain: ChainConfig;
   sworker: SworkerConfig;
@@ -45,6 +51,7 @@ export interface SManagerConfig {
   telemetry: TelemetryConfig;
   dataDir: string;
   scheduler: SchedulerConfig;
+  sealCoordinator?: SealCoordinatorConfig;
 }
 
 export interface NormalizedSchedulerConfig extends SchedulerConfig {

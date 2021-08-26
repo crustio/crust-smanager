@@ -44,6 +44,12 @@ const schedulerConfig = Joi.object().keys({
   maxReplicas: Joi.number().min(0).default(100),
 });
 
+const sealCoordinatorConfig = Joi.object().keys({
+  endPoint: Joi.string().required(),
+  nodeUUID: Joi.string().required(),
+  authToken: Joi.string().default(''),
+});
+
 const configSchema = Joi.object()
   .keys({
     chain: chainConfigSchema.required(),
@@ -53,6 +59,7 @@ const configSchema = Joi.object()
     telemetry: telemetryConfigSchema.required(),
     dataDir: Joi.string().default('data').required(),
     scheduler: schedulerConfig.required(),
+    sealCoordinator: sealCoordinatorConfig,
   })
   .unknown();
 
