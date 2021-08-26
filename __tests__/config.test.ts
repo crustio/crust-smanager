@@ -67,9 +67,9 @@ describe('config validation', () => {
         maxReplicas: 0,
       },
     };
-    expect(validateConfig(customWeights).scheduler.strategy).toContain({
+    expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
       dbFilesWeight: 1,
-      existedFilesWeight: 1,
+      existedFilesWeight: 0,
       newFilesWeight: 1,
     });
 
@@ -114,7 +114,6 @@ describe('config validation', () => {
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
       dbFilesWeight: 50,
       newFilesWeight: 50,
-      existedFilesWeight: 0,
     });
   });
 });

@@ -5,6 +5,7 @@ import { loadConfig } from './config/load-config';
 import { loadDb } from './db';
 import { createIndexingTasks } from './indexing';
 import IpfsApi from './ipfs';
+import { makeSealCoordinatorApiFromConfig } from './services/seal-coordinator';
 import SworkerApi from './sworker';
 import { createSimpleTasks } from './tasks';
 import { createChainHeightLogger } from './tasks/chain-height-logger-task';
@@ -46,6 +47,10 @@ async function main() {
   const database = await loadDb(config);
   const ipfsApi = new IpfsApi(config.ipfs.endPoint, IpfsTimeout);
   const sworkerApi = new SworkerApi(config.sworker.endPoint, SworkerTimeout);
+  const sealCoordinator = await makeSealCoordinatorApiFromConfig(
+    config,
+    logger,
+  );
 
   const context: AppContext = {
     api,
@@ -56,6 +61,7 @@ async function main() {
     groupInfo: null,
     ipfsApi,
     sworkerApi,
+    sealCoordinator,
     startTime: Dayjs(),
   };
   const simpleTasks = await loadSimpleTasks(context);

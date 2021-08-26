@@ -95,6 +95,7 @@ async function collectStats(
     cleanupStats: {
       deletedCount,
     },
+    hasSealCoordinator: !!context.sealCoordinator,
   };
 }
 

@@ -30,6 +30,10 @@ async function handleCleanup(
     for (const f of files) {
       try {
         logger.info('deleting file: %s, record id: %s', f.cid, f.id);
+        if (context.sealCoordinator) {
+          // notify seal coordinator that we're unsealing this file
+          await context.sealCoordinator.unMarkSeal(f.cid);
+        }
         const deleted = await sworkerApi.delete(f.cid);
         const status = deleted ? 'done' : 'failed';
         await fileOrderOp.updateCleanupRecordStatus(f.id, status);

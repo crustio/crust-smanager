@@ -9,6 +9,7 @@ export interface TelemetryData {
   queueStats: QueueInfo;
   cleanupStats: CleanupStats;
   groupInfo: GroupInfo;
+  hasSealCoordinator: boolean;
 }
 
 export interface SWorkerStats {

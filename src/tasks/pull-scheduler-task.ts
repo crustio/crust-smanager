@@ -57,12 +57,18 @@ async function handlePulling(
     (f) => f.size < LargeFileSize,
   );
 
-  logger.info('current sealing %d files = %d small files + %d large files, total size: %d', sealingCount, _.size(smallFiles), _.size(largeFiles), totalSize);
+  logger.info(
+    'current sealing %d files = %d small files + %d large files, total size: %d',
+    sealingCount,
+    _.size(smallFiles),
+    _.size(largeFiles),
+    totalSize,
+  );
   if (sealingCount >= maxForSmall + maxForLarge) {
     logger.info('too many pending files, skip this round');
     return;
   }
-    
+
   for (
     let i = 0;
     i < maxFilesPerRound &&
@@ -216,7 +222,7 @@ async function getOneFileByStrategy(
     if (!record) {
       return null;
     }
-    const status = filterFile(record, strategy, blockAndTime, context);
+    const status = await filterFile(record, strategy, blockAndTime, context);
     switch (status) {
       case 'good':
         if (await isSealDone(record.cid, context.sworkerApi, logger)) {
