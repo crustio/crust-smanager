@@ -3,6 +3,7 @@ import { Database } from 'sqlite';
 import CrustApi from '../chain';
 import IpfsApi from '../ipfs';
 import SworkerApi from '../sworker';
+import { SealCoordinatorApi } from './seal-coordinator';
 import { NormalizedConfig } from './smanager-config';
 
 export interface NodeInfo {
@@ -23,5 +24,6 @@ export interface AppContext {
   sworkerApi: SworkerApi;
   nodeInfo: NodeInfo | null;
   groupInfo: GroupInfo | null;
+  sealCoordinator: SealCoordinatorApi | null;
   cancelationTokens: { [cid: string]: AbortController };
 }

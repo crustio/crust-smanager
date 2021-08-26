@@ -10,6 +10,7 @@ import seedrandom from 'seedrandom';
 import _ from 'lodash';
 import SworkerApi from '../sworker';
 import { Logger } from 'winston';
+import { logger } from '../utils/logger';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
@@ -44,12 +45,12 @@ const MinLifeTime = Dayjs.duration({
 });
 
 // TODO: add some tests
-export function filterFile(
+export async function filterFile(
   record: FileRecord,
   strategey: PullingStrategy,
   lastBlockTime: BlockAndTime,
   context: AppContext,
-): FilterFileResult {
+): Promise<FilterFileResult> {
   const config = context.config.scheduler;
   const groupInfo = context.groupInfo;
   try {
@@ -107,6 +108,16 @@ export function filterFile(
       return 'lifeTimeTooShort';
     }
   }
+  const sealCoordinator = context.sealCoordinator;
+  if (sealCoordinator != null) {
+    const shouldSeal = await sealCoordinator.markSeal(record.cid);
+    if (shouldSeal.seal && shouldSeal.reason === 'ok') {
+      return 'good';
+    }
+    logger.info(`seal for file "${record.cid}" skipped by seal coordinator`);
+    return 'nodeSkipped';
+  }
+
   return 'good';
 }
 

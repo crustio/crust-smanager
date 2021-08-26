@@ -7,6 +7,6 @@ export interface MarkSealResponse {
 
 export interface SealCoordinatorApi {
   ping: () => Promise<boolean>;
-  markSeal: (cid: string) => Promsie<MarkSealResponse>;
+  markSeal: (cid: string) => Promise<MarkSealResponse>;
   unMarkSeal: (cid: string) => Promise<MarkSealResponse>;
 }
