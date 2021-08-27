@@ -73,11 +73,7 @@ async function main() {
     await logTask.stop();
 
     logger.info('reload chain api, waiting.....');
-    await Bluebird.delay(10 * 1000);
-    await api.stop();
-    await Bluebird.delay(30 * 1000);
-    await api.initApi();
-    await Bluebird.delay(30 * 1000);
+    await api.reconnect();
 
     // start tasks
     _.forEach(simpleTasks, (t) => t.start(context));

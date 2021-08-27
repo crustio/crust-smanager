@@ -79,6 +79,14 @@ export default class CrustApi {
     }
   }
 
+  // reconnect this api instance
+  async reconnect(): Promise<void> {
+    await this.stop();
+    await Bluebird.delay(30 * 1000);
+    await this.initApi();
+    await Bluebird.delay(10 * 1000);
+  }
+
   isConnected(): boolean {
     return this.api.isConnected;
   }
@@ -302,16 +310,16 @@ export default class CrustApi {
   /**
    * Get file info from chain by cid
    * @param cid Ipfs file cid
-   * @returns Option<UsedInfo>
+   * @returns Option<MarketFileInfo>
    * @throws ApiPromise error or type conversing error
    */
   async maybeGetFileUsedInfo(cid: string): Promise<MarketFileInfo | null> {
     await this.withApiReady();
 
     try {
-      // Should be like [fileInfo, usedInfo] or null
+      // Should be like MarketFileInfo or null
       const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
-      return fileUsedInfo ? fileUsedInfo : null;
+      return fileUsedInfo ? fileUsedInfo as MarketFileInfo: null;
     } catch (e) {
       logger.error(`💥 Get file/used info error: ${e}`);
       return null;
