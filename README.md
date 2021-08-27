@@ -70,7 +70,7 @@ Checkout [smanager-config.example.json](data/smanager-config.example.json)
 
 Those config items will be configured in the sManager configuration setup process. The meaning of each item is as follows:
 
-* chain.account: your stash account
+* chain.account: your member account
 * chain.endPoint: your chain endpoint
 * sworker.endPoint: your sWorker endpoint
 * ipfs.endPoint: your IPFS endpoint
