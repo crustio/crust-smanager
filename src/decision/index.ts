@@ -182,9 +182,12 @@ export default class DecisionEngine {
       try {
         logger.info('⏳  Checking pulling queue ...');
         this.pullCount++;
+        // For little Maxwell
+        /*
         if (this.allNodeCount === -1 || this.pullCount % 360 === 0) {
           this.allNodeCount = await this.crustApi.getAllNodeCount();
         }
+        */
         const dealLen = this.pullingQueue.tasks.length;
 
         logger.info(
