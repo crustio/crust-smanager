@@ -311,7 +311,7 @@ export default class CrustApi {
     try {
       // Should be like [fileInfo, usedInfo] or null
       const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
-      return fileUsedInfo ? fileUsedInfo[1] : null;
+      return fileUsedInfo ? fileUsedInfo : null;
     } catch (e) {
       logger.error(`💥 Get file/used info error: ${e}`);
       return null;
