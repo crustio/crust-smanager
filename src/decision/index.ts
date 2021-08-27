@@ -421,6 +421,9 @@ export default class DecisionEngine {
     ) {
       pTake = pTake * this.members.length;
     }
+    
+    // For little Maxwell
+    pTake = 1;
 
     return pTake > rdm(this.chainAccount);
   }
