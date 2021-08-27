@@ -72,6 +72,9 @@ async function main() {
     await waitChainSynced(context);
     await logTask.stop();
 
+    logger.info('reload chain api, waiting.....');
+    await api.reconnect();
+
     // start tasks
     _.forEach(simpleTasks, (t) => t.start(context));
     _.forEach(tasks, (t) => t.start(context));
