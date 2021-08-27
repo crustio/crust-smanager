@@ -13,14 +13,14 @@
     "role": "member"
   },
   "telemetry": {
-    "endPoint": "http://124.156.129.198:27654"
+    "endPoint": "https://sm-submit.crust.network"
   },
   "dataDir": "data",
   "scheduler": {
-    "minSrdRatio": 0,
+    "minSrdRatio": 30,
     "strategy": {
-      "existedFilesWeight": 10,
-      "newFilesWeight": 20
+      "dbFilesWeight": 10,
+      "newFilesWeight": 90
     }
   }
 }
