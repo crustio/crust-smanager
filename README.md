@@ -64,6 +64,20 @@ It's recommended to run sManager using Docker with the `restart=always` restart 
 
 A daemon guard should be configured if you want to run sManager natively without docker. Tools like `pm2` and `nodemon` could be used.
 
-
 ## Configuration
+
 Checkout [smanager-config.example.json](data/smanager-config.example.json)
+
+Those config items will be configured in the sManager configuration setup process. The meaning of each item is as follows:
+
+* chain.account: your member account
+* chain.endPoint: your chain endpoint
+* sworker.endPoint: your sWorker endpoint
+* ipfs.endPoint: your IPFS endpoint
+* dataDir: the directory of the database of sManager
+* scheduler.minSrdRatio: a minimum ratio of SRD that one node can start to accept storage orders.
+
+    > For example, if the ratio is 30, then your node will start to accept storage order once the ratio of SRD capacity is higher than 30%
+
+* scheduler.strategy.dbFilesWeight: how much bandwidth of this node will be used to fetch and store the history storage orders(Storage orders in the past four months).
+* scheduler.strategy.newFilesWeight: how much bandwidth of this node will be used to fetch and store the newest storage orders.
