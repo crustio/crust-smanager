@@ -9,7 +9,6 @@ import { getTimestamp } from '../utils';
 import { isSealDone } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
-const MinSworkerSealSpeed = 10 * 1024; // 10 KB/s
 const MinSealStartTime = 10 * 60; // 10 minutes for a sealing job to start
 
 /**
@@ -51,23 +50,13 @@ async function checkAndUpdateStatus(
   ) {
     return;
   }
-  const lastCheckedTime =
-    record.last_check_time > 0 ? record.last_check_time : record.pin_at;
-  const duraitonSinceLastCheck = now - lastCheckedTime;
+
   const { sworkerApi } = context;
   // cid in seal info map, means it's being sealed
   // need to check the seal progress
   if (_.has(sealInfoMap, record.cid)) {
     const sealedSize = sealInfoMap[record.cid].sealed_size;
-    const sealSpeed =
-      (sealedSize - record.sealed_size) / 1024 / duraitonSinceLastCheck;
-    if (sealSpeed < MinSworkerSealSpeed) {
-      logger.warn(
-        'sealing is too slow for file "%s", cancel sealing',
-        record.cid,
-      );
-      await markRecordAsFailed(record, pinRecordOps, context, logger, true);
-    } else {
+    if (sealedSize > record.sealed_size) {
       logger.info(
         'file "%s" is sealing, update sealed size: %d',
         record.cid,
@@ -78,6 +67,12 @@ async function checkAndUpdateStatus(
         sealedSize,
         'sealing',
       );
+    } else {
+      logger.warn(
+        'sealing is too slow for file "%s", cancel sealing',
+        record.cid,
+      );
+      await markRecordAsFailed(record, pinRecordOps, context, logger, true);
     }
   } else {
     // cid not in seal info map, either means sealing is done or sealing is not started
