@@ -11,9 +11,19 @@ export async function startHttp(
     const app = express();
     const PORT = 42087;
 
-    app.get('/api/v0/pin', (req, res) => {
-        logger.info("xxxxxxxxxxxxxxxx");
-        res.send('Hello world');
+    app.post('/api/v0/insert', async (req, res) => {
+        const cid = req.body['cid'];
+        if (!cid) {
+            return res.status(400).send('Please provide cid in the request');
+        }
+        logger.info("Try to insert pinning job: %s", cid);
+
+        const fi = await context.api.maybeGetFileUsedInfo(cid);
+        if (!fi) {
+            return res.status(400).send('Please provide ordered cid');
+        }
+        
+        return res.status(200).send('Success');
     });
 
     app.listen(PORT, () => {
