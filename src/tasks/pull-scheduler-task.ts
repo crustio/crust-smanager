@@ -219,8 +219,12 @@ async function getOneFileByStrategy(
   const { strategy } = options;
   do {
     // Accapt all wanted records
-    const wantedRecord = getWantedPendingFile(fileOrderOps, options);
+    const wantedRecord = await getWantedPendingFile(fileOrderOps, options);
     if (wantedRecord) {
+      if (await isSealDone(wantedRecord.cid, context.sworkerApi, logger)) {
+        await fileOrderOps.updateFileInfoStatus(wantedRecord.id, 'handled');
+        return null;
+      }
       return wantedRecord;
     }
 
