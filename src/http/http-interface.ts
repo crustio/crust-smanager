@@ -36,13 +36,13 @@ export async function startHttp(
             return res.status(400).send(`wanted file ${cid} not exist on chain`);
         }
 
-        logger.info(`wanted file chain info: ${JSON.stringify(file)}`);
-
         const fi = file.toJSON() as any; // eslint-disable-line
         const fileInfo = {
             ...fi,
             amount: new BigNumber(fi.amount.toString()),
         } as ChainFileInfo;
+        
+        logger.info(`wanted file chain info: ${JSON.stringify(fileInfo)}`);
 
         const sfi: FileInfo[] = [{
             cid,
