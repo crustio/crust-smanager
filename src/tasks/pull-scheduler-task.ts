@@ -218,10 +218,10 @@ async function getOneFileByStrategy(
 ): Promise<FileRecord | null> {
   const { strategy } = options;
   do {
-    // Accapt all active records
-    const activeRecord = getActivePendingFile(fileOrderOps, options);
-    if (activeRecord) {
-      return activeRecord;
+    // Accapt all wanted records
+    const wantedRecord = getWantedPendingFile(fileOrderOps, options);
+    if (wantedRecord) {
+      return wantedRecord;
     }
 
     const record = await getPendingFile(fileOrderOps, options);
@@ -290,21 +290,21 @@ async function getFreeSpace(context: AppContext): Promise<[number, number]> {
   return [gbToMb(freeGBSize), gbToMb(sysFreeGBSize)];
 }
 
-async function getActivePendingFile(
+async function getWantedPendingFile(
   fileOrderOps: DbOrderOperator,
   sealOptions: SealOption,
 ): DbResult<FileRecord> {
   if (sealOptions.sealLarge) {
-    const record = fileOrderOps.getPendingFileRecord('active', false);
+    const record = fileOrderOps.getPendingFileRecord('wanted', false);
     if (record) {
       return record;
     }
 
-    return await fileOrderOps.getPendingFileRecord('active', true);
+    return await fileOrderOps.getPendingFileRecord('wanted', true);
   }
 
   if (sealOptions.sealSmall) {
-    return fileOrderOps.getPendingFileRecord('active', true);
+    return fileOrderOps.getPendingFileRecord('wanted', true);
   }
   return null;
 }

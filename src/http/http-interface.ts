@@ -4,11 +4,14 @@ import { AppContext } from '../types/context';
 import * as bodyParser from 'body-parser';
 import { FileInfo } from '../chain';
 import { createFileOrderOperator } from '../db/file-record';
+import { bytesToMb } from '../utils';
+import { ChainFileInfo } from '../types/chain';
+import BigNumber from 'bignumber.js';
 
 export async function startHttp(
     context: AppContext,
     loggerParent: Logger,
-) {
+): Promise<void> {
     const logger = loggerParent.child({ moduleId: "http" });
     const app = express();
     const PORT = 42087;
@@ -23,27 +26,36 @@ export async function startHttp(
     app.post('/api/v0/insert', async (req, res) => {
         const cid = req.body['cid'];
         if (!cid) {
-            return res.status(400).send('Please provide cid in the request');
+            return res.status(400).send('please provide cid in the request');
         }
-        logger.info("Try to insert pinning job: %s", cid);
+        logger.info("try to insert wanted file: %s", cid);
 
-        const fi = await context.api.maybeGetFileUsedInfo(cid);
-        if (!fi) {
-            return res.status(400).send('Please provide ordered cid');
+        const file: any = await context.api.chainApi().query.market.files(cid); // eslint-disable-line
+        if (file.isEmpty) {
+            logger.warn('wanted file %s not exist on chain', cid);
+            return res.status(400).send(`wanted file ${cid} not exist on chain`);
         }
+
+        logger.info(`wanted file chain info: ${JSON.stringify(file)}`);
+
+        const fi = file.toJSON() as any; // eslint-disable-line
+        const fileInfo = {
+            ...fi,
+            amount: new BigNumber(fi.amount.toString()),
+        } as ChainFileInfo;
 
         const sfi: FileInfo[] = [{
-            cid: cid,
-            size: Number(fi.file_size),
-            tips: 0,
-            expiredAt: fi.expired_at ? Number(fi.expired_at) : null,
-            replicas: fi.replicas ? Number(fi.replicas) : null,
-            owner: null
+            cid,
+            size: bytesToMb(fileInfo.file_size),
+            tips: fileInfo.amount.toNumber(),
+            owner: null,
+            replicas: fileInfo.reported_replica_count,
+            expiredAt: fileInfo.expired_at,
         }];
 
-        await fileOrderOp.addFiles(sfi, 'active', true);
+        await fileOrderOp.addFiles(sfi, 'wanted', true);
 
-        return res.status(200).send(`Insert job: ${cid} success`);
+        return res.status(200).send(`insert wanted file: ${cid} success`);
     });
 
     app.listen(PORT, () => {
