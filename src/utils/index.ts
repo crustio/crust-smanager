@@ -12,10 +12,11 @@ export * as consts from './consts';
  * Parse object into JSON object
  * @param o any object
  */
-export function parseObj<T>(o: unknown): T {
+export function parseObj(o: unknown){
   if (typeof o !== 'string') {
-    return o as T;
+    return JSON.parse(JSON.stringify(o));
   }
+
   return JSON.parse(o);
 }
 
