@@ -404,7 +404,7 @@ export async function createPullSchedulerTask(
   const pullingInterval = 1 * 60 * 1000; // trival, period run it if there is no pending files in the db
 
   return makeIntervalTask(
-    60 * 1000,
+    70 * 1000,
     pullingInterval,
     'files-pulling',
     context,
