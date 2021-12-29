@@ -1,5 +1,5 @@
 import Bluebird from 'bluebird';
-import _, { Function0 } from 'lodash';
+import _, { Function0, indexOf } from 'lodash';
 import { Logger } from 'winston';
 import { createFileOrderOperator } from '../db/file-record';
 import { createPinRecordOperator } from '../db/pin-record';
@@ -90,6 +90,7 @@ async function handlePulling(
     }
 
     const sealingFiles = await pinRecordOps.getSealingRecords();
+    const sealingFileCids = _.map(sealingFiles, (f) => f.cid);;
     const [smallFiles, largeFiles] = _.partition(
       sealingFiles,
       (f) => f.size < LargeFileSize,
@@ -121,6 +122,15 @@ async function handlePulling(
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
       continue;
     }
+
+    // the record is sealing
+    if (sealingFileCids.includes(record.cid)) {
+      logger.info(`the file ${record.cid} has been scheduled for processing`);
+      await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
+      continue;
+    }
+    sealingFileCids.push(record.cid);
+    
     await sealFile(
       context,
       logger,
