@@ -90,7 +90,6 @@ async function handlePulling(
     }
 
     const sealingFiles = await pinRecordOps.getSealingRecords();
-    const sealingFileCids = _.map(sealingFiles, (f) => f.cid);;
     const [smallFiles, largeFiles] = _.partition(
       sealingFiles,
       (f) => f.size < LargeFileSize,
@@ -122,14 +121,6 @@ async function handlePulling(
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
       continue;
     }
-
-    // the record is sealing
-    if (sealingFileCids.includes(record.cid)) {
-      logger.info(`the file ${record.cid} has been scheduled for processing`);
-      await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
-      continue;
-    }
-    sealingFileCids.push(record.cid);
 
     await sealFile(
       context,
