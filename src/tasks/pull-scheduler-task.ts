@@ -299,7 +299,7 @@ async function getWantedPendingFile(
   sealOptions: SealOption,
 ): DbResult<FileRecord> {
   if (sealOptions.sealLarge) {
-    const record = fileOrderOps.getPendingFileRecord('wanted', false);
+    const record = await fileOrderOps.getPendingFileRecord('wanted', false);
     if (record) {
       return record;
     }
@@ -308,7 +308,7 @@ async function getWantedPendingFile(
   }
 
   if (sealOptions.sealSmall) {
-    return fileOrderOps.getPendingFileRecord('wanted', true);
+    return await fileOrderOps.getPendingFileRecord('wanted', true);
   }
   return null;
 }
@@ -332,7 +332,7 @@ async function getPendingFile(
   }
 
   if (sealSmall) {
-    return getPendingFileByStrategy(fileOrderOps, strategy, true);
+    return await getPendingFileByStrategy(fileOrderOps, strategy, true);
   }
   return null;
 }
