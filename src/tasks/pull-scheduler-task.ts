@@ -1,5 +1,5 @@
 import Bluebird from 'bluebird';
-import _, { Function0, indexOf } from 'lodash';
+import _, { Function0 } from 'lodash';
 import { Logger } from 'winston';
 import { createFileOrderOperator } from '../db/file-record';
 import { createPinRecordOperator } from '../db/pin-record';
@@ -130,7 +130,7 @@ async function handlePulling(
       continue;
     }
     sealingFileCids.push(record.cid);
-    
+
     await sealFile(
       context,
       logger,
