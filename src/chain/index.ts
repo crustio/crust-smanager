@@ -24,7 +24,7 @@ export interface FileInfo {
   owner: string | null;
 }
 
-export type MarketFileInfo = typeof crustTypes.market.types.FileInfo;
+export type MarketFileInfo = typeof crustTypes.market.types.FileInfoV2;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
