@@ -1,6 +1,6 @@
 {
   "name": "crust-smanager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A storage manager integrated with Crust, IPFS and sWorker(storage inspector) of Crust protocol.",
   "main": "build/src/main.js",
   "repository": "https://github.com/crustio/crust-smanager.git",
