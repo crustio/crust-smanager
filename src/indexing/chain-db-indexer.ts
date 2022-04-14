@@ -147,7 +147,7 @@ async function indexOneFile(
 ): Promise<FileInfo | null> {
   const { api } = context;
   logger.info('indexing "%s"', cid);
-  const file: any = await api.chainApi().query.market.files(cid); // eslint-disable-line
+  const file: any = await api.chainApi().query.market.filesV2(cid); // eslint-disable-line
   if (file.isEmpty) {
     logger.warn('file %s not exist on chain', cid);
     return null;

@@ -24,7 +24,7 @@ export interface FileInfo {
   owner: string | null;
 }
 
-export type MarketFileInfo = typeof crustTypes.market.types.FileInfo;
+export type MarketFileInfo = typeof crustTypes.market.types.FileInfoV2;
 export type Identity = typeof crustTypes.swork.types.Identity;
 
 export default class CrustApi {
@@ -318,7 +318,7 @@ export default class CrustApi {
 
     try {
       // Should be like MarketFileInfo or null
-      const fileUsedInfo = parseObj(await this.api.query.market.files(cid));
+      const fileUsedInfo = parseObj(await this.api.query.market.filesV2(cid));
       return fileUsedInfo ? fileUsedInfo as MarketFileInfo: null;
     } catch (e) {
       logger.error(`💥 Get file/used info error: ${e}`);
