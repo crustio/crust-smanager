@@ -15,6 +15,7 @@ import { SimpleTask, Task } from './types/tasks';
 import { Dayjs } from './utils/datetime';
 import { logger } from './utils/logger';
 import { timeout, timeoutOrError } from './utils/promise-utils';
+import { startHttp } from './http/http-interface';
 
 const MaxTickTimout = 15 * 1000;
 const IpfsTimeout = 8000 * 1000; // 8000s
@@ -78,6 +79,10 @@ async function main() {
     // start tasks
     _.forEach(simpleTasks, (t) => t.start(context));
     _.forEach(tasks, (t) => t.start(context));
+
+    // start http
+    startHttp(context, logger);
+    
     // start event loop after chain is synced
     await doEventLoop(context, tasks);
   } catch (e) {

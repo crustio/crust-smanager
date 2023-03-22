@@ -121,6 +121,7 @@ async function handlePulling(
       await fileOrderOps.updateFileInfoStatus(record.id, 'insufficient_space');
       continue;
     }
+
     await sealFile(
       context,
       logger,
@@ -218,6 +219,16 @@ async function getOneFileByStrategy(
 ): Promise<FileRecord | null> {
   const { strategy } = options;
   do {
+    // Accapt all wanted records
+    const wantedRecord = await getWantedPendingFile(fileOrderOps, options);
+    if (wantedRecord) {
+      if (await isSealDone(wantedRecord.cid, context.sworkerApi, logger)) {
+        await fileOrderOps.updateFileInfoStatus(wantedRecord.id, 'handled');
+        return null;
+      }
+      return wantedRecord;
+    }
+
     const record = await getPendingFile(fileOrderOps, options);
     if (!record) {
       return null;
@@ -284,6 +295,25 @@ async function getFreeSpace(context: AppContext): Promise<[number, number]> {
   return [gbToMb(freeGBSize), gbToMb(sysFreeGBSize)];
 }
 
+async function getWantedPendingFile(
+  fileOrderOps: DbOrderOperator,
+  sealOptions: SealOption,
+): DbResult<FileRecord> {
+  if (sealOptions.sealLarge) {
+    const record = await fileOrderOps.getPendingFileRecord('wanted', false);
+    if (record) {
+      return record;
+    }
+
+    return await fileOrderOps.getPendingFileRecord('wanted', true);
+  }
+
+  if (sealOptions.sealSmall) {
+    return await fileOrderOps.getPendingFileRecord('wanted', true);
+  }
+  return null;
+}
+
 async function getPendingFile(
   fileOrderOps: DbOrderOperator,
   sealOptions: SealOption,
@@ -303,7 +333,7 @@ async function getPendingFile(
   }
 
   if (sealSmall) {
-    return getPendingFileByStrategy(fileOrderOps, strategy, true);
+    return await getPendingFileByStrategy(fileOrderOps, strategy, true);
   }
   return null;
 }
@@ -374,7 +404,7 @@ export async function createPullSchedulerTask(
   const pullingInterval = 1 * 60 * 1000; // trival, period run it if there is no pending files in the db
 
   return makeIntervalTask(
-    60 * 1000,
+    70 * 1000,
     pullingInterval,
     'files-pulling',
     context,
