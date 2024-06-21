@@ -55,16 +55,17 @@ async function handleUpdate(context: AppContext, logger: Logger) {
 
     if (validMembers.length > 0) {
       logger.info(`load ${validMembers.length} valid group members`);
-      validMembers.sort();
-      const nodeIndex = validMembers.indexOf(api.getChainAccount());
-      context.groupInfo = {
-        groupAccount: groupOwner,
-        totalMembers: validMembers.length,
-        nodeIndex,
-      };
     } else {
       logger.warn(`load ${validMembers.length} valid group members`);
     }
+
+    validMembers.sort();
+    const nodeIndex = validMembers.indexOf(api.getChainAccount());
+    context.groupInfo = {
+      groupAccount: groupOwner,
+      totalMembers: validMembers.length,
+      nodeIndex,
+    };
   } catch (e) {
     logger.error('failed updating group info: %s', formatError(e));
     context.groupInfo = null;

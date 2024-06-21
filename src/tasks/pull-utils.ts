@@ -55,10 +55,7 @@ export async function filterFile(
   const groupInfo = context.groupInfo;
   try {
     const bn = cidToBigNumber(record.cid);
-    if (
-      groupInfo.totalMembers > 0 &&
-      !bn.mod(groupInfo.totalMembers).eq(groupInfo.nodeIndex)
-    ) {
+    if (groupInfo.totalMembers == 0 || !bn.mod(groupInfo.totalMembers).eq(groupInfo.nodeIndex) ) {
       return 'nodeSkipped';
     }
   } catch (ex) {
