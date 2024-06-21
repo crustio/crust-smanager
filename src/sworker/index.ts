@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import qs from 'querystring';
 import {
+  EnclaveIdInfo,
   QuerySealInfoResult,
   SealInfoMap,
   SealInfoResp,
@@ -87,6 +88,13 @@ export default class SworkerApi {
     return parseObj(res.data);
   }
 
+  async getEnclaveIdInfo(): Promise<EnclaveIdInfo> {
+    const res = await this.sworker.get('/enclave/id_info');
+    if (!res || res.status !== 200) {
+      throw new Error(`invalid sworker response: ${res}`);
+    }
+    return parseObj(res.data);
+  }
   /// READ methods
   /**
    * Query local free storage size

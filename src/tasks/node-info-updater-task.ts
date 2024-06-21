@@ -5,7 +5,6 @@ import { AppContext } from '../types/context';
 import { SimpleTask } from '../types/tasks';
 import { formatError } from '../utils';
 import { SLOT_LENGTH } from '../utils/consts';
-import { Dayjs } from '../utils/datetime';
 import { makeIntervalTask } from './task-utils';
 
 // the storage key for 'swork->workReport'

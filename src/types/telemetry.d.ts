@@ -10,9 +10,18 @@ export interface TelemetryData {
   cleanupStats: CleanupStats;
   groupInfo: GroupInfo;
   hasSealCoordinator: boolean;
+  osInfo: OSInfo | null;
 }
 
 export interface SWorkerStats {
+  id_info: {
+    account: string;
+    attestation_mode: string | null;
+    mrenclave: string;
+    pub_key: string;
+    sworker_version: string;
+    version: string;
+  };
   files: {
     lost: {
       num: number;
@@ -58,4 +67,20 @@ export interface PinStats {
 
 export interface CleanupStats {
   deletedCount: number;
+}
+
+export interface OSInfo {
+  kernel: string;
+  uptime: number;
+  cpuInfo: {
+    cpuModel: string;
+    cpuCount: number;
+  };
+  memInfo: {
+    totalMemMb: number;
+    usedMemMb: number;
+    freeMemMb: number;
+    usedMemPercentage: number;
+    freeMemPercentage: number;
+  };
 }
