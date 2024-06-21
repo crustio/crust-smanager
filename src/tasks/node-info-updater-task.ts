@@ -18,7 +18,7 @@ async function handleUpdate(context: AppContext, logger: Logger) {
   try {
     let lastKey = null;
     let totalCount = 0;
-    let tempValidNodeAnchors = new Set();
+    const tempValidNodeAnchors = new Set();
     // eslint-disable-next-line
     while (true) {
       const keys = await (lastKey
