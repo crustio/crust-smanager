@@ -214,12 +214,12 @@ export async function createTelemetryReportTask(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  // const reportInterval = Dayjs.duration({
-  //   hours: 1,
-  // }).asMilliseconds();
+  const reportInterval = Dayjs.duration({
+    hours: 1,
+  }).asMilliseconds();
   return makeIntervalTask(
-    1 * 1000,
-    2 * 1000,
+    300 * 1000,
+    reportInterval,
     'telemetry-report',
     context,
     loggerParent,
