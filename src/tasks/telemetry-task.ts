@@ -5,7 +5,7 @@ import SworkerApi from '../sworker';
 import { AppContext } from '../types/context';
 import { PinStatus } from '../types/database';
 import { NormalizedConfig } from '../types/smanager-config';
-import { WorkloadInfo } from '../types/sworker';
+import { EnclaveIdInfo, WorkloadInfo } from '../types/sworker';
 import { SimpleTask } from '../types/tasks';
 import {
   PinStats,
@@ -13,11 +13,14 @@ import {
   SManagerInfo,
   TelemetryData,
   SWorkerStats,
+  OSInfo,
 } from '../types/telemetry';
 import { formatError, getTimestamp, toQuotedList } from '../utils';
 import { Dayjs } from '../utils/datetime';
 import { PendingStatus } from './pull-utils';
 import { makeIntervalTask } from './task-utils';
+import os from 'os';
+import osu from 'node-os-utils';
 
 const ReportSlotDuration = Dayjs.duration({
   hours: 24,
@@ -63,9 +66,11 @@ async function collectStats(
     [timeStart],
   );
   const workload = await getSworkerWorkload(sworkerApi, logger);
+  const enclaveIdInfo = await getSworkerEnclaveIdInfo(sworkerApi, logger);
   let reportWL: SWorkerStats;
   if (workload) {
     reportWL = {
+      id_info: enclaveIdInfo,
       srd: {
         srd_complete: workload.srd.srd_complete,
         srd_remaining_task: workload.srd.srd_remaining_task,
@@ -80,6 +85,8 @@ async function collectStats(
   } else {
     reportWL = null;
   }
+
+  const osInfo = await collectOSInfo(logger);
 
   return {
     chainAccount: account,
@@ -96,6 +103,7 @@ async function collectStats(
       deletedCount,
     },
     hasSealCoordinator: !!context.sealCoordinator,
+    osInfo
   };
 }
 
@@ -107,6 +115,18 @@ async function getSworkerWorkload(
     return await sworkerApi.workload();
   } catch (e) {
     logger.error('failed to load sworker workload: %s', formatError(e));
+    return null;
+  }
+}
+
+async function getSworkerEnclaveIdInfo(
+  sworkerApi: SworkerApi,
+  logger: Logger,
+): Promise<EnclaveIdInfo | null> {
+  try {
+    return await sworkerApi.getEnclaveIdInfo();
+  } catch (e) {
+    logger.error('failed to get sworker enclave id_info: %s', formatError(e));
     return null;
   }
 }
@@ -162,6 +182,32 @@ async function getPinStats(database, timeStart: number): Promise<PinStats> {
     failedCount,
     sealedSize: sizeTotal || 0,
   };
+}
+
+
+async function collectOSInfo(logger: Logger): Promise<OSInfo> {
+  
+  try {
+    const kernel = os.release();
+    const uptime = os.uptime();
+    const cpuModel = osu.cpu.model();
+    const cpuCount = osu.cpu.count();
+    const memInfo = await osu.mem.info();
+
+    return {
+      kernel,
+      uptime,
+      cpuInfo: {
+        cpuModel,
+        cpuCount,
+      },
+      memInfo
+    }
+  }catch(err){
+    logger.error(`failed to collect os info: ${err}`);
+  }
+
+  return null;
 }
 
 export async function createTelemetryReportTask(

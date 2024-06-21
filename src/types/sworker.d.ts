@@ -33,6 +33,15 @@ export interface WorkloadInfo {
   };
 }
 
+export interface EnclaveIdInfo {
+  account: string;
+  attestation_mode: string | null;
+  mrenclave: string;
+  pub_key: string;
+  sworker_version: string;
+  version: string;
+}
+
 export type SealedType = 'valid' | 'lost' | 'pending';
 
 export interface SealInfoData {
