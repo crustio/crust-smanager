@@ -93,11 +93,10 @@ export async function createNodeInfoUpdateTask(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  // update node count every 5 hours
-  // note: it's slow
-  const updateInterval = Dayjs.duration({
-    hours: 1,
-  }).asMilliseconds();
+  // After we change to use batch mode, the time cost to retrieve all work reports from chain 
+  // has been reduced from ~100 minutes to ~5 minutes, so we can shorten the updateInterval 
+  // update group info every 30 minutes
+  const updateInterval = 30 * 60 * 1000; 
 
   return makeIntervalTask(
     5 * 1000,
