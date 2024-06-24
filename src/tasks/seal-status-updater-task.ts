@@ -10,6 +10,7 @@ import { isSealDone } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
 const MinSealStartTime = 10 * 60; // 10 minutes for a sealing job to start
+const SealUpdateTimeout = 30 * 60; // 30 minutes for a sealing job timeout
 
 /**
  * task to update the sealing status in the pin records table
@@ -51,6 +52,8 @@ async function checkAndUpdateStatus(
     return;
   }
 
+  const sealUpdateInterval = now - (record.last_check_time > 0 ? record.last_check_time : record.pin_at);
+
   const { sworkerApi } = context;
   // cid in seal info map, means it's being sealed
   // need to check the seal progress
@@ -68,18 +71,22 @@ async function checkAndUpdateStatus(
         'sealing',
       );
     } else {
-      logger.warn(
-        'sealing is too slow for file "%s", cancel sealing',
-        record.cid,
-      );
-      await markRecordAsFailed(record, pinRecordOps, context, logger, true);
+      if (sealUpdateInterval > SealUpdateTimeout) {
+        logger.warn(
+          'sealing is too slow for file "%s", cancel sealing',
+          record.cid,
+        );
+        await markRecordAsFailed(record, pinRecordOps, context, logger, true);
+      }
     }
   } else {
     // cid not in seal info map, either means sealing is done or sealing is not started
     const done = await isSealDone(record.cid, sworkerApi, logger);
     if (!done) {
-      logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
-      await markRecordAsFailed(record, pinRecordOps, context, logger, false);
+      if (sealUpdateInterval > SealUpdateTimeout) {
+        logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
+        await markRecordAsFailed(record, pinRecordOps, context, logger, false);
+      }
     } else {
       logger.info('file "%s" is sealed, update the seal status', record.cid);
       await pinRecordOps.updatePinRecordStatus(record.id, 'sealed');
