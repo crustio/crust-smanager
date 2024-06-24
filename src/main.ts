@@ -23,6 +23,7 @@ const ConfigFile = process.env['SMANAGER_CONFIG'] || 'smanager-config.json';
 const MaxNoNewBlockDuration = Dayjs.duration({
   minutes: 30,
 });
+const MaxRunTaskConsecutiveErrorCount = 5;
 
 /**
  * SManager tasks:
@@ -146,6 +147,7 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
   const { api } = context;
   let lastBlock = api.latestFinalizedBlock();
   let lastBlockTime = Dayjs();
+  let runTaskConsecutiveErrorCount = 0;
   logger.info('running event loop');
   do {
     await api.ensureConnection();
@@ -164,15 +166,26 @@ async function doEventLoop(context: AppContext, tasks: Task[]): Promise<void> {
       continue;
     }
     lastBlockTime = Dayjs();
-    for (let block = lastBlock + 1; block <= curBlock; block++) {
-      logger.info('run tasks on block %d', block);
-      lastBlock = block;
-      await timeoutOrError(
-        `run tasks`,
-        Bluebird.map(tasks, (t) => t.onTick(lastBlock)),
-        MaxTickTimout,
-      );
+    try {
+      for (let block = lastBlock + 1; block <= curBlock; block++) {
+        logger.info('run tasks on block %d', block);
+        await timeoutOrError(
+          `run tasks`,
+          Bluebird.map(tasks, (t) => t.onTick(block)),
+          MaxTickTimout,
+        );
+        lastBlock = block;
+        runTaskConsecutiveErrorCount = 0; // reset the counter if run task successfully
+      }
+    } catch(err) {
+      logger.error(`error in run task on tick: ${err}`);
+      runTaskConsecutiveErrorCount++;
+      if (runTaskConsecutiveErrorCount > MaxRunTaskConsecutiveErrorCount) {
+        logger.error(`Conesecutive run task error count exceeds the limit ${MaxRunTaskConsecutiveErrorCount}, quiting smanager!`);
+        throw err;
+      }
     }
+    
     await Bluebird.delay(1 * 1000);
   } while (true); // eslint-disable-line
 }
