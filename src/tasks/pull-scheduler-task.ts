@@ -134,7 +134,7 @@ async function handlePulling(
 
 async function isReady(context: AppContext, logger: Logger): Promise<boolean> {
   const { config, sworkerApi } = context;
-  if (!context.groupInfo) {
+  if (!context.groupInfo || context.groupInfo.totalMembers === 0) {
     logger.info('group info not loaded, skip this round');
     return false;
   }
