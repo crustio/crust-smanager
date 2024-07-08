@@ -24,7 +24,7 @@ async function handleRetry(context: AppContext) {
   await database.run(
     `update file_record set status = "failed"
     where status in (${toQuotedList(PendingStatus)})
-    and create_at < ?`,
+    and last_updated < ?`, // Should use last_updated instead of create_at, since replay old order will only update last_updated
     [maxCreateTime],
   );
 
