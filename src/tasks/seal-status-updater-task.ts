@@ -9,7 +9,7 @@ import { getTimestamp } from '../utils';
 import { isSealDone } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
 
-const MinSealStartTime = 10 * 60; // 10 minutes for a sealing job to start
+const MinSealStartTime = 30; // 30 seconds for a sealing job to start
 const SealUpdateTimeout = 30 * 60; // 30 minutes for a sealing job timeout
 
 /**
@@ -117,7 +117,7 @@ export async function createSealStatuUpdater(
   context: AppContext,
   loggerParent: Logger,
 ): Promise<SimpleTask> {
-  const sealStatusUpdateInterval = 2 * 60 * 1000; // update seal status every 2 minutes
+  const sealStatusUpdateInterval = 1 * 60 * 1000; // update seal status every 1 minutes
   return makeIntervalTask(
     1 * 60 * 1000,
     sealStatusUpdateInterval,
