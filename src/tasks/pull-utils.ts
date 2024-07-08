@@ -2,15 +2,15 @@ import BigNumber from 'bignumber.js';
 import { FileRecord, FileStatus } from '../types/database';
 import { PullingStrategy } from '../types/smanager-config';
 import IpfsHttpClient from 'ipfs-http-client';
-import { bytesToMb, formatError } from '../utils';
-import { Dayjs } from '../utils/datetime';
-import { BlockAndTime, estimateTimeAtBlock } from '../utils/chain-math';
+import { formatError } from '../utils';
+//import { Dayjs } from '../utils/datetime';
+import { BlockAndTime } from '../utils/chain-math';
 import { AppContext } from '../types/context';
-import seedrandom from 'seedrandom';
+//import seedrandom from 'seedrandom';
 import _ from 'lodash';
 import SworkerApi from '../sworker';
 import { Logger } from 'winston';
-import { logger } from '../utils/logger';
+//import { logger } from '../utils/logger';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
@@ -37,12 +37,12 @@ type FilterFileResult =
   | 'pendingForReplica';
 
 // treat file as invalid if no replicas for at most 10 days
-const MaxNoReplicaDuration = Dayjs.duration({
-  days: 10,
-});
-const MinLifeTime = Dayjs.duration({
-  months: 4,
-});
+// const MaxNoReplicaDuration = Dayjs.duration({
+//   days: 10,
+// });
+// const MinLifeTime = Dayjs.duration({
+//   months: 4,
+// });
 
 // TODO: add some tests
 export async function filterFile(
@@ -148,29 +148,29 @@ export function estimateIpfsPinTimeout(size: number /** in bytes */): number {
   return BasePinTimeout + (size / 1024 / 200) * 1000;
 }
 
-function probabilityFilter(context: AppContext, maxReplicas: number): boolean {
-  if (!context.nodeInfo) {
-    return false;
-  }
-  // Base probability
-  let pTake = 0.0;
-  const nodeCount = context.nodeInfo.nodeCount;
-  if (nodeCount === 0) {
-    pTake = 0.0;
-  } else {
-    pTake = maxReplicas / nodeCount;
-  }
+// // function probabilityFilter(context: AppContext, maxReplicas: number): boolean {
+// //   if (!context.nodeInfo) {
+// //     return false;
+// //   }
+// //   // Base probability
+// //   let pTake = 0.0;
+// //   const nodeCount = context.nodeInfo.nodeCount;
+// //   if (nodeCount === 0) {
+// //     pTake = 0.0;
+// //   } else {
+// //     pTake = maxReplicas / nodeCount;
+// //   }
 
-  const memberCount = _.max([1, context.groupInfo.totalMembers]);
-  pTake = pTake * memberCount;
+// //   const memberCount = _.max([1, context.groupInfo.totalMembers]);
+// //   pTake = pTake * memberCount;
 
-  return pTake > rdm(context.config.chain.account);
-}
+// //   return pTake > rdm(context.config.chain.account);
+// // }
 
-function rdm(seed: string): number {
-  const rng = seedrandom(seed, { entropy: true });
-  return rng();
-}
+// function rdm(seed: string): number {
+//   const rng = seedrandom(seed, { entropy: true });
+//   return rng();
+// }
 
 export async function isSealDone(
   cid: string,
