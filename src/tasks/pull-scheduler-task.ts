@@ -243,6 +243,7 @@ async function getOneFileByStrategy(
         break;
       case 'pfSkipped':
       case 'nodeSkipped':
+      case 'rateSkipped':
         logger.info('file "%s" is skipped by rule: "%s"', record.cid, status);
         await fileOrderOps.updateFileInfoStatus(record.id, 'skipped');
         break;
