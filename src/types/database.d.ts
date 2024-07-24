@@ -15,7 +15,14 @@ type FileStatus =
   | 'failed'
   | 'skipped'
   | 'handled'
-  | 'expired';
+  | 'expired'
+  | 'pfSkipped'
+  | 'nodeSkipped'
+  | 'rateSkipped'
+  | 'sizeSmallSkipped'
+  | 'sizeLargeSkipped'
+  | 'replicasNotEnoughSkipped'
+  | 'tooManyReplicasSkipped';
 type CleanupStatus = 'pending' | 'failed' | 'done';
 
 export interface FileRecord {

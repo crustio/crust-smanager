@@ -242,35 +242,35 @@ async function getOneFileByStrategy(
         await fileOrderOps.updateFileInfoStatus(record.id, 'expired');
         break;
       case 'pfSkipped':
+        logger.info('file "%s" is skipped by rule: "%s"', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'pfSkipped');
+        break;
       case 'nodeSkipped':
+        logger.info('file "%s" is skipped by rule: "%s"', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'nodeSkipped');
+        break;
       case 'rateSkipped':
         logger.info('file "%s" is skipped by rule: "%s"', record.cid, status);
-        await fileOrderOps.updateFileInfoStatus(record.id, 'skipped');
+        await fileOrderOps.updateFileInfoStatus(record.id, 'rateSkipped');
         break;
       case 'sizeTooSmall':
+        logger.info('file "%s" is skipped by size constraint: %s', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'sizeSmallSkipped');
+        break;
       case 'sizeTooLarge':
-        logger.info(
-          'file "%s" is skipped by size constraint: %s',
-          record.cid,
-          status,
-        );
-        await fileOrderOps.updateFileInfoStatus(record.id, 'skipped');
+        logger.info('file "%s" is skipped by size constraint: %s', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'sizeLargeSkipped');
         break;
       case 'replicasNotEnough':
+        logger.info('file "%s" is skipped by replica constraint: %s', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'replicasNotEnoughSkipped');
+        break;
       case 'tooManyReplicas':
-        logger.info(
-          'file "%s" is skipped by replica constraint: %s',
-          record.cid,
-          status,
-        );
-        await fileOrderOps.updateFileInfoStatus(record.id, 'skipped');
+        logger.info('file "%s" is skipped by replica constraint: %s', record.cid, status);
+        await fileOrderOps.updateFileInfoStatus(record.id, 'tooManyReplicasSkipped');
         break;
       case 'pendingForReplica':
-        logger.info(
-          'file "%s" replica count is not enough, pending recheck',
-          record.cid,
-          status,
-        );
+        logger.info('file "%s" replica count is not enough, pending recheck', record.cid, status);
         await fileOrderOps.updateFileInfoStatus(record.id, 'pending_replica');
         break;
     }

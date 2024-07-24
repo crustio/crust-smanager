@@ -14,6 +14,7 @@ import {
   TelemetryData,
   SWorkerStats,
   OSInfo,
+  FileStats,
 } from '../types/telemetry';
 import { formatError, getTimestamp, toQuotedList } from '../utils';
 import { Dayjs } from '../utils/datetime';
@@ -58,6 +59,7 @@ async function collectStats(
 
   const timeStart = getTimestamp() - ReportSlotDuration;
   const queueStats = await collectQueueInfo(database);
+  const fileStats = await collectFileStats(database);
   const pinStats = await getPinStats(database, timeStart);
 
   const { deletedCount } = await database.get(
@@ -99,6 +101,7 @@ async function collectStats(
       nodeIndex: 0,
     },
     queueStats,
+    fileStats,
     cleanupStats: {
       deletedCount,
     },
@@ -145,6 +148,25 @@ async function collectQueueInfo(database): Promise<QueueInfo> {
     pendingCount,
     pendingSizeTotal: pendingSize || 0,
   };
+}
+
+async function collectFileStats(database): Promise<FileStats> {
+  const { totalCount } = await database.get(
+    `select count(*) as totalCount from file_record`,
+  );
+  const countByStatusResults = await database.get(
+    `select status, count(1) from file_record group by status`,
+  );
+
+  const fileStats = {
+    totalCount
+  };
+
+  for (const { status, count } of countByStatusResults) {
+    fileStats[status] = count;
+  }
+
+  return fileStats;
 }
 
 function collectSManagerInfo(

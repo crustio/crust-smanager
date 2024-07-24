@@ -7,6 +7,7 @@ export interface TelemetryData {
   pinStats: PinStats;
   sworker: SWorkerStats | null;
   queueStats: QueueInfo;
+  fileStats: FileStats;
   cleanupStats: CleanupStats;
   groupInfo: GroupInfo;
   hasSealCoordinator: boolean;
@@ -56,6 +57,11 @@ export interface SManagerInfo {
 export interface QueueInfo {
   pendingCount: number;
   pendingSizeTotal: number; // in MB
+}
+
+export interface FileStats {
+  totalCount: number;
+  [status: string]: number;
 }
 
 export interface PinStats {
