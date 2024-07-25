@@ -154,8 +154,8 @@ async function collectFileStats(database): Promise<FileStats> {
   const { totalCount } = await database.get(
     `select count(*) as totalCount from file_record`,
   );
-  const countByStatusResults = await database.get(
-    `select status, count(1) from file_record group by status`,
+  const countByStatusResults = await database.all(
+    `select status, count(1) as count from file_record group by status`,
   );
 
   const fileStats = {
