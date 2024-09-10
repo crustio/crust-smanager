@@ -331,8 +331,8 @@ async function sealFile(
   strategey: PullingStrategy,
 ) {
   logger.info('sealing for file "%s"', record.cid);
-  await pinRecordOps.addPinRecord(record.cid, record.size, strategey);
-  await fileOrderOps.updateFileInfoStatus(record.id, 'handled');
+  await pinRecordOps.addPinRecord(record.cid, record.size, strategey, record.id);
+  await fileOrderOps.updateFileInfoStatus(record.id, 'sealing');
   const { ipfsApi } = context;
   // timeout is necessay
   const [abortCtrl, result] = ipfsApi.pin(

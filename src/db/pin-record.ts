@@ -29,12 +29,13 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
     cid: string,
     size: number,
     pinBy: PullingStrategy,
+    fileRecordId: number
   ): DbWriteResult => {
     await db.run(
       'insert into pin_record ' +
-        '(`cid`, `size`, `status`, `pin_at`, `last_updated`, `pin_by`) ' +
-        ' values(?, ?, ?, ?, ?, ?)',
-      [cid, size, 'sealing', getTimestamp(), getTimestamp(), pinBy],
+        '(`cid`, `size`, `status`, `pin_at`, `last_updated`, `pin_by`, `file_record_id`) ' +
+        ' values(?, ?, ?, ?, ?, ?, ?)',
+      [cid, size, 'sealing', getTimestamp(), getTimestamp(), pinBy, fileRecordId],
     );
   };
   const getPinRecordsByCid = async (cid: string): DbResult<PinRecord[]> => {

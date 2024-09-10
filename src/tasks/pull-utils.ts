@@ -13,6 +13,7 @@ import { Logger } from 'winston';
 import { logger } from '../utils/logger';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
+const GroupCount = 80; // Current average group count - 2024
 export const SysMinFreeSpace = 50 * 1024; // 50 * 1024 MB
 export const BasePinTimeout = 60 * 60 * 1000; // 60 minutes
 
@@ -20,7 +21,7 @@ export const RetryableStatus: FileStatus[] = [
   'pending_replica',
   'insufficient_space',
 ];
-export const PendingStatus: FileStatus[] = ['new', ...RetryableStatus];
+export const PendingStatus: FileStatus[] = ['new', 'sealFailedRetry', ...RetryableStatus];
 
 type FilterFileResult =
   | 'good'
@@ -165,7 +166,8 @@ function probabilityFilter(context: AppContext, maxReplicas: number): boolean {
   if (nodeCount === 0) {
     pTake = 0.0;
   } else {
-    pTake = maxReplicas / nodeCount;
+    // Should not divide by nodeCount here, one group can have only one replica, so it should divide by groupCount
+    pTake = maxReplicas / GroupCount;
   }
 
   const memberCount = _.max([1, context.groupInfo.totalMembers]);

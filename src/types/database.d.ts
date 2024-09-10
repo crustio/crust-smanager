@@ -7,7 +7,7 @@ export interface SDatabase {
   getConfig: (name: string) => Promise<string | null>;
 }
 
-type FileStatus =
+export type FileStatus =
   | 'new'
   | 'pending_replica'
   | 'insufficient_space'
@@ -22,7 +22,9 @@ type FileStatus =
   | 'sizeSmallSkipped'
   | 'sizeLargeSkipped'
   | 'replicasNotEnoughSkipped'
-  | 'tooManyReplicasSkipped';
+  | 'tooManyReplicasSkipped'
+  | 'sealing'
+  | 'sealFailedRetry';
 type CleanupStatus = 'pending' | 'failed' | 'done';
 
 export interface FileRecord {
@@ -36,6 +38,7 @@ export interface FileRecord {
   status: FileStatus;
   last_updated: number;
   create_at: number;
+  retry_count: number;
 }
 
 export interface FileOwnerRecord {
@@ -76,6 +79,7 @@ export interface DbOrderOperator {
     indexer: Indexer | null,
     smallFile: boolean,
   ) => DbResult<FileRecord>;
+  getRecordById: (id: number) => DbResult<FileRecord>;
 }
 
 type DbResult<T> = Promise<T | null>;
@@ -107,6 +111,7 @@ export interface PinRecord {
   pin_by: PullingStrategy;
   sealed_size: number;
   last_check_time: number;
+  file_record_id: number;
 }
 
 export interface PinRecordOperator {
@@ -115,6 +120,7 @@ export interface PinRecordOperator {
     cid: string,
     size: number,
     pinBy: PullingStrategy,
+    fileRecordId: number,
   ) => DbWriteResult;
   getSealingRecords: () => DbResult<PinRecord[]>;
   getPinRecordsByCid: (cid: string) => DbResult<PinRecord[]>;

@@ -37,6 +37,8 @@ export interface SchedulerConfig {
   maxFileSize: number; // in MB
   minReplicas: number; // min replicas for chainDb indexer
   maxReplicas: number; // max replicas limit for all indexer
+  sealFailedRetryCount: number;
+  sealFailedRetryInterval: number;
 }
 
 export interface SealCoordinatorConfig {

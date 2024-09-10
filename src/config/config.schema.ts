@@ -44,6 +44,8 @@ const schedulerConfig = Joi.object().keys({
   maxFileSize: Joi.number().min(0).default(0),
   minReplicas: Joi.number().min(0).default(0),
   maxReplicas: Joi.number().min(0).default(200),
+  sealFailedRetryCount: Joi.number().min(0).default(3),
+  sealFailedRetryInterval: Joi.number().min(1).default(3), // Unit in hours
 });
 
 const sealCoordinatorConfig = Joi.object().keys({

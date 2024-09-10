@@ -34,6 +34,21 @@ async function handleRetry(context: AppContext) {
     and last_updated < ?`,
     [maxRetryTime],
   );
+
+  // Retry seal failed records
+  const sealFailedRetryInterval = Dayjs.duration({
+    hours: context.config.scheduler.sealFailedRetryInterval,
+  }).asSeconds();
+  const maxPinFailedRetryTime = now - sealFailedRetryInterval;
+  
+  await database.run(
+    `update file_record 
+     set status = "new",
+         retry_count = COALESCE(retry_count, 0) + 1
+    where status = 'sealFailedRetry' 
+          and last_updated < ?`,
+    [maxPinFailedRetryTime],
+  );
 }
 
 export async function createFileRetryTask(

@@ -197,6 +197,15 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     );
   };
 
+  const getRecordById = async (
+    id: number
+  ): DbResult<FileRecord> => {
+    return db.get(
+      'select * from file_record where id = ? limit 1',
+      [id],
+    );
+  };
+
   return {
     addFiles,
     getFileInfo: async (cid, indexer) => {
@@ -213,5 +222,6 @@ export function createFileOrderOperator(db: Database): DbOrderOperator {
     getPendingCleanupRecords,
     updateCleanupRecordStatus,
     getPendingFileRecord,
+    getRecordById,
   };
 }

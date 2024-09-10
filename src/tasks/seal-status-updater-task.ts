@@ -2,15 +2,16 @@ import _ from 'lodash';
 import { Logger } from 'winston';
 import { createPinRecordOperator } from '../db/pin-record';
 import { AppContext } from '../types/context';
-import { PinRecord, PinRecordOperator } from '../types/database';
+import { DbOrderOperator, FileStatus, PinRecord, PinRecordOperator } from '../types/database';
 import { SealInfoMap } from '../types/sworker';
 import { SimpleTask } from '../types/tasks';
 import { getTimestamp } from '../utils';
 import { isSealDone } from './pull-utils';
 import { IsStopped, makeIntervalTask } from './task-utils';
+import { createFileOrderOperator } from '../db/file-record';
 
 const MinSealStartTime = 30; // 30 seconds for a sealing job to start
-const SealUpdateTimeout = 30 * 60; // 30 minutes for a sealing job timeout
+const SealUpdateTimeout = 5 * 60; // 5 minutes for a sealing job timeout
 
 /**
  * task to update the sealing status in the pin records table
@@ -22,6 +23,7 @@ async function handleUpdate(
 ) {
   const { database, sworkerApi } = context;
   const pinRecordOps = createPinRecordOperator(database);
+  const fileOrderOps = createFileOrderOperator(database);
   const pendingFiles = await sworkerApi.pendings();
   const sealingRecords = await pinRecordOps.getSealingRecords();
   logger.info('checking %d sealing records', sealingRecords.length);
@@ -29,7 +31,7 @@ async function handleUpdate(
     if (isStopped()) {
       break;
     }
-    await checkAndUpdateStatus(r, pendingFiles, context, logger, pinRecordOps);
+    await checkAndUpdateStatus(r, pendingFiles, context, logger, pinRecordOps, fileOrderOps);
   }
 }
 
@@ -39,6 +41,7 @@ async function checkAndUpdateStatus(
   context: AppContext,
   logger: Logger,
   pinRecordOps: PinRecordOperator,
+  fileOrderOps: DbOrderOperator,
 ) {
   const now = getTimestamp();
   const totalTimeUsed = now - record.pin_at;
@@ -76,7 +79,7 @@ async function checkAndUpdateStatus(
           'sealing is too slow for file "%s", cancel sealing',
           record.cid,
         );
-        await markRecordAsFailed(record, pinRecordOps, context, logger, true);
+        await markRecordAsFailed(record, pinRecordOps, fileOrderOps, context, logger, true);
       }
     }
   } else {
@@ -85,11 +88,13 @@ async function checkAndUpdateStatus(
     if (!done) {
       if (sealUpdateInterval > SealUpdateTimeout) {
         logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
-        await markRecordAsFailed(record, pinRecordOps, context, logger, false);
+        await markRecordAsFailed(record, pinRecordOps, fileOrderOps, context, logger, false);
       }
     } else {
       logger.info('file "%s" is sealed, update the seal status', record.cid);
       await pinRecordOps.updatePinRecordStatus(record.id, 'sealed');
+      // Update file record state from sealing to handled
+      await fileOrderOps.updateFileInfoStatus(record.file_record_id, 'handled');
     }
   }
 }
@@ -97,6 +102,7 @@ async function checkAndUpdateStatus(
 async function markRecordAsFailed(
   record: PinRecord,
   pinRecordOps: PinRecordOperator,
+  fileOrderOps: DbOrderOperator,
   context: AppContext,
   logger: Logger,
   endSworker: boolean,
@@ -107,7 +113,22 @@ async function markRecordAsFailed(
     context.cancelationTokens[record.cid].abort();
     delete context.cancelationTokens[record.cid];
   }
+
+  // Check whether the file need to retry
+  let fileStatus: FileStatus = 'failed';
+  if (!_.isNil(record.file_record_id)) {
+    const fileRecord = await fileOrderOps.getRecordById(record.file_record_id);
+    if (!_.isNil(fileRecord)) {
+      const retry_count = _.isNil(fileRecord.retry_count) ? 0 : fileRecord.retry_count;
+      if (retry_count < context.config.scheduler.sealFailedRetryCount) {
+        fileStatus = 'sealFailedRetry';
+      }
+    }
+  }
+  // Update file_record and pin_record status
   await pinRecordOps.updatePinRecordStatus(record.id, 'failed');
+  await fileOrderOps.updateFileInfoStatus(record.file_record_id, fileStatus);
+  
   if (endSworker) {
     await sworkerApi.sealEnd(record.cid);
   }
