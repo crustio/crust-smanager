@@ -53,7 +53,7 @@ async function handleRetry(
     [maxPinFailedRetryTime],
   );
 
-  logger.info(`Handle Retry: Mark failed - ${failedResult.changes}; Normal Retry: ${retryableResult.changes}; Seal Failed Retry: ${sealFailedRetryResult.changes}`);
+  logger.info(`Handle Retry: Mark failed - ${failedResult.changes}; Normal Retry - ${retryableResult.changes}; Seal Failed Retry - ${sealFailedRetryResult.changes}`);
 }
 
 export async function createFileRetryTask(
