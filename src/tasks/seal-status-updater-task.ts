@@ -11,7 +11,8 @@ import { IsStopped, makeIntervalTask } from './task-utils';
 import { createFileOrderOperator } from '../db/file-record';
 
 const MinSealStartTime = 30; // 30 seconds for a sealing job to start
-const SealUpdateTimeout = 5 * 60; // 5 minutes for a sealing job timeout
+const SealStartTimeout = 5 * 60; // 5 minutes for a sealing job start timeout
+const SealUpdateTimeout = 10 * 60; // 10 minutes for a sealing job update timeout
 
 /**
  * task to update the sealing status in the pin records table
@@ -86,7 +87,7 @@ async function checkAndUpdateStatus(
     // cid not in seal info map, either means sealing is done or sealing is not started
     const done = await isSealDone(record.cid, sworkerApi, logger);
     if (!done) {
-      if (sealUpdateInterval > SealUpdateTimeout) {
+      if (sealUpdateInterval > SealStartTimeout) {
         logger.info('sealing blocked for file "%s", cancel sealing', record.cid);
         await markRecordAsFailed(record, pinRecordOps, fileOrderOps, context, logger, false);
       }
@@ -122,6 +123,7 @@ async function markRecordAsFailed(
       const retry_count = _.isNil(fileRecord.retry_count) ? 0 : fileRecord.retry_count;
       if (retry_count < context.config.scheduler.sealFailedRetryCount) {
         fileStatus = 'sealFailedRetry';
+        logger.info(`file "${record.cid}" retry count is ${retry_count}, mark to keep retrying`);
       }
     }
   }

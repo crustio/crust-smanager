@@ -14,21 +14,24 @@ const MinFileRetryInterval = Dayjs.duration({
   minutes: 30,
 }).asSeconds();
 
-async function handleRetry(context: AppContext) {
+async function handleRetry(
+  context: AppContext,
+  logger: Logger,
+  ) {
   const { database } = context;
 
   const now = getTimestamp();
   const maxCreateTime = now - MaxFilePendingTime;
   const maxRetryTime = now - MinFileRetryInterval;
 
-  await database.run(
+  const failedResult = await database.run(
     `update file_record set status = "failed"
     where status in (${toQuotedList(PendingStatus)})
     and last_updated < ?`, // Should use last_updated instead of create_at, since replay old order will only update last_updated
     [maxCreateTime],
   );
 
-  await database.run(
+  const retryableResult = await database.run(
     `update file_record set status = "new"
     where status in (${toQuotedList(RetryableStatus)})
     and last_updated < ?`,
@@ -41,7 +44,7 @@ async function handleRetry(context: AppContext) {
   }).asSeconds();
   const maxPinFailedRetryTime = now - sealFailedRetryInterval;
   
-  await database.run(
+  const sealFailedRetryResult = await database.run(
     `update file_record 
      set status = "new",
          retry_count = COALESCE(retry_count, 0) + 1
@@ -49,6 +52,8 @@ async function handleRetry(context: AppContext) {
           and last_updated < ?`,
     [maxPinFailedRetryTime],
   );
+
+  logger.info(`Handle Retry: Mark failed - ${failedResult.changes}; Normal Retry: ${retryableResult.changes}; Seal Failed Retry: ${sealFailedRetryResult.changes}`);
 }
 
 export async function createFileRetryTask(

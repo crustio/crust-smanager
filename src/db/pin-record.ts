@@ -22,7 +22,7 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
   const getSealingRecords = async (): DbResult<PinRecord[]> => {
     // get all sealing one time
     return db.all(
-      'select id, cid, size, status, pin_at, last_updated, pin_by, sealed_size, last_check_time from pin_record where status = "sealing"',
+      'select id, cid, size, status, pin_at, last_updated, pin_by, sealed_size, last_check_time, file_record_id from pin_record where status = "sealing"',
     );
   };
   const addPinRecord = async (
@@ -31,6 +31,13 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
     pinBy: PullingStrategy,
     fileRecordId: number
   ): DbWriteResult => {
+    // remove old pin record with the same cid + fileRecordId and status is failed
+    await db.run(
+      'delete from pin_record where cid = ? and file_record_id = ? and status = "failed"',
+      [cid, fileRecordId]
+    );
+
+    // insert new record
     await db.run(
       'insert into pin_record ' +
         '(`cid`, `size`, `status`, `pin_at`, `last_updated`, `pin_by`, `file_record_id`) ' +
@@ -40,7 +47,7 @@ export function createPinRecordOperator(db: Database): PinRecordOperator {
   };
   const getPinRecordsByCid = async (cid: string): DbResult<PinRecord[]> => {
     const result = await db.all(
-      'select id, cid, size, status, pin_at, last_updated, pin_by, sealed_size, last_check_time from pin_record where cid = ? ',
+      'select id, cid, size, status, pin_at, last_updated, pin_by, sealed_size, last_check_time, file_record_id from pin_record where cid = ? ',
       [cid],
     );
     return result;
