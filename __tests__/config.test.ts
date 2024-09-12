@@ -29,6 +29,10 @@ const defaultConfig: SManagerConfig = {
     maxFileSize: 0,
     minReplicas: 0,
     maxReplicas: 0,
+    filesSkipRate: 0,
+    enableProbabilityFilter: false,
+    sealFailedRetryCount: 3,
+    sealFailedRetryInterval: 3,
   },
 };
 
@@ -46,6 +50,10 @@ describe('config validation', () => {
         maxFileSize: 0,
         minReplicas: 0,
         maxReplicas: 0,
+        filesSkipRate: 0,
+        enableProbabilityFilter: false,
+        sealFailedRetryCount: 3,
+        sealFailedRetryInterval: 3,
       },
     };
     expect(validateConfig(srdStrategey).scheduler.strategy).toBe('srdFirst');
@@ -65,6 +73,10 @@ describe('config validation', () => {
         maxFileSize: 0,
         minReplicas: 0,
         maxReplicas: 0,
+        filesSkipRate: 0,
+        enableProbabilityFilter: false,
+        sealFailedRetryCount: 3,
+        sealFailedRetryInterval: 3,
       },
     };
     expect(validateConfig(customWeights).scheduler.strategy).toStrictEqual({
@@ -88,6 +100,10 @@ describe('config validation', () => {
         maxFileSize: 0,
         minReplicas: 0,
         maxReplicas: 0,
+        filesSkipRate: 0,
+        enableProbabilityFilter: false,
+        sealFailedRetryCount: 3,
+        sealFailedRetryInterval: 3,
       },
     };
     expect(() => validateConfig(config)).toThrow();
@@ -109,6 +125,10 @@ describe('config validation', () => {
         maxFileSize: 0,
         minReplicas: 0,
         maxReplicas: 0,
+        filesSkipRate: 0,
+        enableProbabilityFilter: false,
+        sealFailedRetryCount: 3,
+        sealFailedRetryInterval: 3,
       },
     };
     expect(normalizeConfig(config).scheduler.strategy).toStrictEqual({
