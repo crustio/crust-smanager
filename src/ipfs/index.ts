@@ -97,4 +97,12 @@ export default class IpfsApi {
   async repoGC(to: number): Promise<void> {
     await this.ipfs.repo.gc({ timeout: to });
   }
+
+  /**
+   * ipfs swarm connect
+   * @param peerAddress peer address
+   */
+  async connectPeer(peerAddress: string): Promise<void> {
+    await this.ipfs.swarm.connect(peerAddress);
+  }
 }
