@@ -2,8 +2,12 @@ import { BigNumber } from 'bignumber.js';
 import { addrToHostPort } from '../utils';
 import IpfsHttpClient from 'ipfs-http-client';
 import { AbortController } from 'native-abort-controller';
+import { CrustGWPeers, DefaultCrustGWPeers } from '../tasks/ipfs-update-peers-list-task';
+import { createChildLogger } from '../utils/logger';
 
 const CID = (IpfsHttpClient as any).CID; // eslint-disable-line
+
+const logger = createChildLogger({ moduleId: 'ipfs-api' });
 
 export default class IpfsApi {
   private readonly ipfs: any; // eslint-disable-line
@@ -28,8 +32,9 @@ export default class IpfsApi {
   pin(c: string, to: number): [AbortController, Promise<boolean>] {
     const controller = new AbortController();
     const signal = controller.signal;
-
+    
     const result = async () => {
+      await this.connectGatewayPeers();
       const cid = new CID(c);
       const pin = await this.ipfs.pin.add(cid, { timeout: to, signal });
       return cid.equals(pin) as boolean;
@@ -38,6 +43,21 @@ export default class IpfsApi {
     return [controller, result()];
   }
 
+  async connectGatewayPeers(): Promise<void> {
+    const peersToConnect = CrustGWPeers.size > 0 ? Array.from(CrustGWPeers): DefaultCrustGWPeers;
+  
+    let successCount = 0;
+    for (const peer of peersToConnect) {
+      try {
+        await this.ipfs.swarm.connect(peer);
+        successCount++;
+      } catch (error) {
+        logger.debug(`Failed to connect to peer: '${peer}'. Error: ${error}`);
+      }
+    }
+    logger.debug(`Connect to ${successCount} dedicated crust gateway peers.`);
+  }
+  
   /**
    * NO USE
    * Pin remove file by a given cid

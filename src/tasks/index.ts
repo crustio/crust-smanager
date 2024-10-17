@@ -12,7 +12,6 @@ import { createSealCleanupTask } from './seal-cleanup-task';
 import { createSealStatuUpdater } from './seal-status-updater-task';
 import { createTelemetryReportTask } from './telemetry-task';
 import { createIpfsUpdatePeersListTask } from './ipfs-update-peers-list-task';
-import { createIpfsConnectPeersTask } from './ipfs-connect-peers-task';
 
 /**
  * create simpile tasks which only handle start/stop
@@ -32,7 +31,6 @@ export async function createSimpleTasks(
     createNodeInfoUpdateTask,
     createSealCleanupTask,
     createIpfsUpdatePeersListTask,
-    createIpfsConnectPeersTask
   ];
   return Bluebird.mapSeries(tasks, (t) => {
     return t(context, logger);
