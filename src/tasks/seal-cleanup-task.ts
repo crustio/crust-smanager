@@ -65,7 +65,7 @@ export async function createSealCleanupTask(
     hours: 1,
   }).asMilliseconds();
   return makeIntervalTask(
-    60 * 1000,
+    40 * 1000,
     cleanupInterval,
     'seal-cleanup',
     context,

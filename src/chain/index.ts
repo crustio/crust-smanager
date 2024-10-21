@@ -313,7 +313,7 @@ export default class CrustApi {
    * @returns Option<MarketFileInfo>
    * @throws ApiPromise error or type conversing error
    */
-  async maybeGetFileUsedInfo(cid: string): Promise<MarketFileInfo | null> {
+   public async maybeGetFileUsedInfo(cid: string): Promise<MarketFileInfo | null> {
     await this.withApiReady();
 
     try {
